@@ -1,0 +1,1 @@
+make sure to set RUSTC_BOOTSTRAP=1 in your env variables. this is because the tests rely on the datatest crate which needs it for whatever reason.
