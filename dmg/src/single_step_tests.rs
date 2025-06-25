@@ -49,6 +49,7 @@ mod single_step_test {
         gameboy.registers.l = test.initial.l;
         gameboy.registers.sp = test.initial.sp;
         gameboy.registers.pc = test.initial.pc;
+        gameboy.ppu_clock = 0;
         gameboy.running = true;
         gameboy.cycles_to_idle = Some(0);
 

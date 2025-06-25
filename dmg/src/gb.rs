@@ -1,5 +1,6 @@
 use crate::memory;
 use crate::memory::Memory;
+use crate::log;
 pub struct Registers {
     pub a: u8,
     pub f: u8,
@@ -49,11 +50,11 @@ pub struct GameBoy {
     pub ime: bool,
     pub display_temp: [u8; 160*144], // contents of frame as ppu draws before vblank
     pub display: [u8; 160*144], // after vblank
-    ppu_state: PPUState,
+    pub ppu_state: PPUState,
     pixel_count: u8,
-    ppu_clock: u16,
-    ly: u8,
+    pub ppu_clock: u16,
     fetcher: Fetcher,
+    pub log_level: log::LogLevel
 }
 
 pub fn init() -> GameBoy {
@@ -84,7 +85,7 @@ pub fn init() -> GameBoy {
         display: [0; 160*144],
         ppu_state: PPUState::OAMScan,
         pixel_count: 0,
-        ly: 0,
+        log_level: log::LogLevel::Disassembly,
         fetcher: Fetcher {
             fifo: [0; 16], // circular buffer
             tile_index: 0,
@@ -112,6 +113,8 @@ impl GameBoy {
                     let opcode: u8 = self.memory.read(self.registers.pc);
                     self.registers.pc += 1;
                     self.cycles_to_idle = self.fetch_decode_execute(opcode);
+                } else {   
+                    self.cycles_to_idle = Some(self.cycles_to_idle.unwrap() - 1);
                 }
             }
             self.ppu_tick();
@@ -126,8 +129,8 @@ impl GameBoy {
             PPUState::OAMScan => {
                 if self.ppu_clock == 80 {
                     self.pixel_count = 0;
-                    let tile_line = self.ly % 8;
-                    let tilemap_row_addr = 0x9800 + (self.ly as u16 / 8) * 32;
+                    let tile_line = self.get_ly() % 8;
+                    let tilemap_row_addr = 0x9800 + (self.get_ly() as u16 / 8) * 32;
                     self.start_fetcher(tilemap_row_addr, tile_line);
                     self.ppu_state = PPUState::Drawing;  
                 }
@@ -140,9 +143,6 @@ impl GameBoy {
                 }
                 let pixel = self.fifo_pop();
                 self.display_write(pixel);
-                if pixel != 0 {
-                    println!("{}" , pixel)
-                }
                 self.pixel_count += 1;
             
                 if self.pixel_count == 160 {
@@ -153,8 +153,11 @@ impl GameBoy {
             PPUState::HBlank => {
                 if self.ppu_clock == 456 {
                     self.ppu_clock = 0;
-                    self.ly += 1;
-                    if self.ly == 144 {
+                    if self.get_ly() == 32 {
+                        println!("yeo");
+                    }
+                    self.set_ly(self.get_ly() + 1);
+                    if self.get_ly() == 144 {
                         self.vblank();
                         self.ppu_state = PPUState::VBlank;
                     } else {
@@ -166,9 +169,9 @@ impl GameBoy {
             PPUState::VBlank => {
                 if self.ppu_clock == 456 {
                     self.ppu_clock = 0;
-                    self.ly += 1;
-                    if self.ly == 153 {
-                        self.ly = 0;
+                    self.set_ly(self.get_ly() + 1);
+                    if self.get_ly() == 153 {
+                        self.set_ly(0);
                         self.ppu_state = PPUState::OAMScan;
                     }
                 }
@@ -195,9 +198,6 @@ impl GameBoy {
                 let addr = offset + (self.fetcher.tile_line as u16) * 2;
                 
                 let data = self.memory.read(addr);
-                if data != 0 {
-                    println!("{}",data)
-                }
                 for bit in 0..8 {
                         self.fetcher.pixel_data[bit] = (data >> bit) & 1;
                 }
@@ -208,10 +208,7 @@ impl GameBoy {
                 let addr = offset + (self.fetcher.tile_line as u16) * 2;
                 let data = self.memory.read(addr);
                 for bit in 0..8 {
-                        self.fetcher.pixel_data[bit] |= ((data >> bit) & 1) << 1; 
-                        if self.fetcher.pixel_data[bit] != 0 {
-                            println!("{}", self.fetcher.pixel_data[bit])
-                        }          
+                        self.fetcher.pixel_data[bit] |= ((data >> bit) & 1) << 1;          
                 }
                 self.fetcher.state = FetcherState::PushToFifo;
             }
@@ -239,6 +236,14 @@ impl GameBoy {
         
     }
 
+    fn get_ly(&self) -> u8 {
+        self.memory.read(0xFF44)
+    }
+
+    fn set_ly(&mut self, data: u8) {
+        self.memory.write(0xFF44, data)
+    }
+
     // note that the fifo pop and push are not safe
     // you should check the size before you push or pop 
     fn fifo_push(&mut self, data: u8) {
@@ -255,10 +260,11 @@ impl GameBoy {
         return value;
     }
     fn display_write(&mut self, c: u8) {
-        self.display_temp[((self.ly * 160) + self.pixel_count) as usize] = c;
+        self.display_temp[((self.get_ly() * 160) + self.pixel_count) as usize] = c;
     }
     fn vblank(&mut self) {
+        // TODO find a source that says why to do this
+        // there are probably other things that need to be done during vblank
         self.display = self.display_temp;
-        self.display_temp = [0; 160*144];
     }
 }

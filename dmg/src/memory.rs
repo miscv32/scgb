@@ -24,8 +24,8 @@ impl Memory for FlatRAM {
         if (address as usize) >= GB_RAM_SIZE {
             ()
         } else {
-            if address >= 0x8000 && address <= 0x9FFF {
-                println!("{:#x}", data)
+            if address == 0xFF44 {
+                println!("wrote {} to 0xFF44", data)
             }
             self[address as usize] = data
         }
