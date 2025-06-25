@@ -1,9 +1,9 @@
 
-use eframe::Frame;
+use std::fs;
 use dmg::gb;
 use dmg::gb::GameBoy;
 use dmg::memory::Memory;
-use crate::{emulator, renderer::{channel::ChannelRenderer, Renderer}, widgets::framebuf::FrameBufWidget};
+use crate::{renderer::{channel::ChannelRenderer, Renderer}, widgets::framebuf::FrameBufWidget};
 pub struct ScgbGui {
     pub framebuf: FrameBufWidget,
     pub renderer: ChannelRenderer,
@@ -22,6 +22,15 @@ impl ScgbGui {
         let mut framebuf = FrameBufWidget::new(cc);
         framebuf.connect(renderer.get_receiver());
         let mut gameboy = gb::init();
+
+        // TODO unhardcode this rom loading
+        let data: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/dmg_boot.bin").expect(
+            "couldnt read file"
+        );
+        for i in 0..0xFF {
+            gameboy.memory.write(i as u16, data[i]);
+        }
+
         Self {
             framebuf,
             renderer,
@@ -69,6 +78,7 @@ impl eframe::App for ScgbGui {
                 self.framebuf.draw(ui);
             });
 
+        ctx.request_repaint();
 
         });
     }
