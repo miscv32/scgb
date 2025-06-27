@@ -1,5 +1,4 @@
 pub fn dmg_colour(pixel: u8) -> egui::Color32 {
-    // TODO unhardcode pixel colours
     match pixel {
         0 => egui::Color32::from_rgb(155, 188, 15),
         1 => egui::Color32::from_rgb(139, 172, 15),

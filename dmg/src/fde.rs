@@ -1,5 +1,3 @@
-// TODO implement the few remaining opcodes that SST doesn't test
-
 use crate::{gb::GameBoy, memory::Memory, util::*};
 
 impl GameBoy {
@@ -119,8 +117,6 @@ impl GameBoy {
                 Some(5)
             }
             0x10 => {
-                // TODO verify this is correct behaviour.
-                // Not sure it matters that much, i think only CGB uses this
                 self.log_disassembly("STOP");
                 self.running = false;
                 Some(1)
@@ -366,12 +362,10 @@ impl GameBoy {
             }
             0xE2 => {
                 self.log_disassembly("LDH (C), A");
-                if self.registers.c == 0x44 {
-                    println!("{{")
-                }
+                
                 self.memory
                     .write(unsigned_16(0xFF, self.registers.c), self.registers.a);
-                println!("}}");
+                
                 Some(2)
             }
             0xFA => {
@@ -885,7 +879,6 @@ impl GameBoy {
 
                 if (opcode & 0b11_000_111) == 0b11_000_011 {
                     if (opcode >> 3) & 0b111 == 0 {
-                        // JP unconditional, u16
                         self.log_disassembly("JP unconditional");
                         let lsb = self.memory.read(self.registers.pc);
                         self.registers.pc += 1;
@@ -893,11 +886,9 @@ impl GameBoy {
                         self.registers.pc += 1;
                         self.registers.pc = unsigned_16(msb, lsb);
                         return Some(4);
-                    } else {
-                        return None;
                     }
                 }
-
+                self.log_error("Hit unimplemented or illegal instruction!");
                 return None;
             }
         }

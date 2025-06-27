@@ -1,8 +1,8 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 mod app;
-mod widgets;
+mod emulator;
 mod renderer;
 mod util;
-mod emulator;
+mod widgets;
 pub use app::ScgbGui;

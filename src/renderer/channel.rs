@@ -1,6 +1,6 @@
-use crossbeam_channel::{Receiver, Sender, TrySendError};
-use anyhow::Result;
 use super::{DisplayBuf, Renderer};
+use anyhow::Result;
+use crossbeam_channel::{Receiver, Sender, TrySendError};
 
 /// A renderer that feeds it display buffer back over a channel.
 pub struct ChannelRenderer {

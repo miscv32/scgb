@@ -1,14 +1,15 @@
-
-use std::fs;
+use crate::{
+    renderer::{channel::ChannelRenderer, Renderer},
+    widgets::framebuf::FrameBufWidget,
+};
 use dmg::gb;
 use dmg::gb::GameBoy;
 use dmg::memory::Memory;
-use crate::{renderer::{channel::ChannelRenderer, Renderer}, widgets::framebuf::FrameBufWidget};
+use std::fs;
 pub struct ScgbGui {
     pub framebuf: FrameBufWidget,
     pub renderer: ChannelRenderer,
     pub gameboy: GameBoy,
-
 }
 
 impl ScgbGui {
@@ -17,27 +18,21 @@ impl ScgbGui {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
-        // TODO remove hardcode
         let renderer = ChannelRenderer::new(160, 144).unwrap();
         let mut framebuf = FrameBufWidget::new(cc);
         framebuf.connect(renderer.get_receiver());
         let mut gameboy = gb::init();
 
-        // TODO unhardcode this rom loading
-        let data: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/dmg_boot.bin").expect(
-            "couldnt read file"
-        );
-        let tetris: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/tetris.gb").expect(
-            "couldnt read file"
-        );
-        for i in 0..0xFF {
-            gameboy.memory.write(i as u16, data[i]);
+        let data: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/dmg_boot.bin")
+            .expect("couldnt read file");
+        let tetris: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/tetris.gb")
+            .expect("couldnt read file");
+        for i in 0..=0xFF {
+            gameboy.memory.rom[i] = data[i];
         }
-        // load first 0xFF bytes of tetris so that checksums pass
-        for i in 0x100..0x1FF {
+        for i in 0x00..0x1FFF {
             gameboy.memory.write(i as u16, tetris[i])
         }
-
 
         Self {
             framebuf,
@@ -50,9 +45,8 @@ impl ScgbGui {
 impl eframe::App for ScgbGui {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-
         self.draw();
-        
+
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -78,7 +72,7 @@ impl eframe::App for ScgbGui {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("supercoolgb");
 
-            ui.vertical_centered(|ui| {  
+            ui.vertical_centered(|ui| {
                 let padding_height = (ui.available_height() - self.framebuf.scaled_height()) / 2.0;
                 if padding_height > 0.0 {
                     ui.allocate_space(egui::Vec2::from([1.0, padding_height]));
@@ -86,8 +80,7 @@ impl eframe::App for ScgbGui {
                 self.framebuf.draw(ui);
             });
 
-        ctx.request_repaint();
-
+            ctx.request_repaint();
         });
     }
 }
