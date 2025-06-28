@@ -16,4 +16,4 @@ target_wasm
 test_roms/
 
 # dont commit logs
-logs.txt
+logs*

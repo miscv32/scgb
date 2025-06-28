@@ -404,13 +404,13 @@ impl GameBoy {
             }
             0xD9 => {
                 // RETI
+                self.ime = true; // "it works as ei ret, so the ret eats whatever cycle delay ei had"
                 self.log_disassembly("RETI");
                 let lsb = self.memory.read(self.registers.sp);
                 self.registers.sp += 1;
                 let msb = self.memory.read(self.registers.sp);
                 self.registers.sp += 1;
                 self.registers.pc = unsigned_16(msb, lsb);
-                self.ime = true; // todo dispatch on next cycle
                 Some(4)
             }
             0xE9 => {
@@ -519,6 +519,17 @@ impl GameBoy {
                 self.set_flag_c(((left as u16) - (right as u16)) > 0xFF);
                 Some(2)
             }
+            0xF3 => {
+                self.log_disassembly("DI");
+                self.ime_dispatch = None;
+                self.ime = false;
+                Some(1)
+            }
+            0xFB => {
+                self.log_disassembly("EI");
+                self.ime_dispatch = Some(2);
+                Some(1)
+            } 
             _ => {
                 let r16 = (opcode >> 4) & 0b11;
                 if (opcode & 0b11_00_1111) == 0b00_00_0001 {
@@ -889,6 +900,7 @@ impl GameBoy {
                     }
                 }
                 self.log_error("Hit unimplemented or illegal instruction!");
+                println!("{:#x}", opcode);
                 return None;
             }
         }

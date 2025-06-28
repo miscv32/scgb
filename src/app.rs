@@ -30,7 +30,7 @@ impl ScgbGui {
         for i in 0..=0xFF {
             gameboy.memory.rom[i] = data[i];
         }
-        for i in 0x00..0x1FFF {
+        for i in 0x00..tetris.len() {
             gameboy.memory.write(i as u16, tetris[i])
         }
 
