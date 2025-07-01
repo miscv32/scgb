@@ -22,6 +22,9 @@ impl Memory for MappedRAM {
             if self.main[0xFF50] == 0 && (address as usize) < GB_ROM_SIZE{
                 return self.rom[address as usize];
             }
+            if address == 0xFF00 {
+                return 0xFF // TODO implement input
+            }
             return self.main[address as usize];
         }
     }

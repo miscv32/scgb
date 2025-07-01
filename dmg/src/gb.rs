@@ -1,6 +1,6 @@
 use crate::memory::{self, MappedRAM};
 use crate::memory::Memory;
-use crate::{log, util};
+use crate::log;
 pub struct Registers {
     pub a: u8,
     pub f: u8,
@@ -14,11 +14,23 @@ pub struct Registers {
     pub pc: u16,
 }
 
-pub enum PPUState {
-    OAMScan,
-    Drawing,
-    HBlank,
-    VBlank,
+
+#[derive(PartialEq)]
+#[derive(Debug)]
+pub enum IsrState {
+    ReadIF,
+    ReadIE,
+    Push1,
+    Push2,
+    Jump,
+    None,
+}
+
+pub struct Isr {
+    state: IsrState,
+    iflag: u8,
+    ienable: u8,
+    ir_addr: u16,
 }
 
 pub struct GameBoy {
@@ -31,8 +43,9 @@ pub struct GameBoy {
     pub ime_dispatch: Option<u8>,
     pub display_temp: [u8; 160*144], // contents of frame as ppu draws before vblank
     pub display: [u8; 160*144], // after vblank
-    pub log_level: log::LogLevel,
-    isr: bool,
+    pub logger: log::Logger,
+    pub isr: Isr,
+    window_line_counter: u8,
 }
 
 pub fn init() -> GameBoy {
@@ -54,6 +67,17 @@ pub fn init() -> GameBoy {
         rom: [0; memory::GB_ROM_SIZE],
     };
 
+    let logger = log::Logger {
+        level: log::LogLevel::Info,
+    };
+
+    let isr = Isr {
+        state: IsrState::None,
+        iflag: 0,
+        ienable: 0,
+        ir_addr: 0,
+    };
+
     GameBoy {
         clock: 0,
         running: true,
@@ -64,8 +88,9 @@ pub fn init() -> GameBoy {
         ime_dispatch: None,
         display_temp: [0; 160*144],
         display: [0; 160*144],
-        log_level: log::LogLevel::Info,
-        isr: false,
+        logger: logger,
+        isr: isr,
+        window_line_counter: 0,
     }
 }
 
@@ -76,45 +101,18 @@ impl GameBoy {
         // CPU & RAM idle for the rest of the instruction's M-cycles
         if self.running {
             
+            self.update_ime(false);
             
-            if let Some(id) = self.ime_dispatch {
-                if id > 0 {
-                    self.ime_dispatch = Some(id - 1);
-                } else {
-                    self.log_error("attempt to set IME at wrong part of cycle");
-                    self.ime_dispatch = None;
-                }
+            self.trigger_interrupts();
+
+            if self.isr.state != IsrState::None {
+                self.handle_interrupt();
+                return;
+            } else if self.ime && ((self.get_ie() & self.get_if()) != 0) {
+                self.isr.state = IsrState::ReadIF;    
             }
 
-            // check for interrupts
-            if self.ime && (self.get_ie() & self.get_if() != 0) {
-                if !self.isr {
-                    self.cycles_to_idle = Some(5);
-                    self.isr = true; 
-                    self.log_info("Entered ISR");
-                } else {
-                    if let Some(cycles_to_idle) = self.cycles_to_idle {
-                        if cycles_to_idle == 3 {
-                            // TODO split up fde.rs into functions so we can call without copying code
-                            self.log_info("ISR: Pushing PC to stack");
-                            self.registers.sp -= 1;
-                            self.memory.write(self.registers.sp, util::msb(self.registers.pc));
-                            self.registers.sp -= 1;
-                            self.memory.write(self.registers.sp, util::lsb(self.registers.pc));
-                            println!("{:#x}", self.registers.sp);
-                        }
-                        if cycles_to_idle == 1 {
-                            self.log_info("ISR: setting PC to IH");
-                            let ih_index = (self.get_ie() & self.get_if()).trailing_zeros();
-                            self.registers.pc = [0x40, 0x48, 0x50, 0x58, 0x60][ih_index as usize];
-                            self.isr = false;
-                            self.log_info("ISR: exiting");
-                        }
-                    }
-                    self.cycles_to_idle = Some(self.cycles_to_idle.unwrap() - 1);
-                    println!("{}", self.cycles_to_idle.unwrap());
-                }
-            } else if let Some(cycles_to_idle) = self.cycles_to_idle {
+            if let Some(cycles_to_idle) = self.cycles_to_idle {
                 if cycles_to_idle == 0 {
                     let opcode: u8 = self.memory.read(self.registers.pc);
                     self.registers.pc += 1;
@@ -124,36 +122,128 @@ impl GameBoy {
                 }
             }
 
-            if let Some(id) = self.ime_dispatch {
-                if id > 0 {
-                    self.ime_dispatch = Some(id - 1);
-                } else {
-                    self.ime = true;
-                    self.ime_dispatch = None;
-                }
-            }
-            
-            // TODO implement interrupt system
-            
-            if self.clock % 114 == 0 {
-                if self.get_ly() == 154 {
-                    self.set_ly(0);
-                }
+            self.update_ime(true);
 
-                if self.get_ly() < 144 {
-                    self.render_scanline();
-                } else if self.get_ly() == 144 {
-                    self.display = self.display_temp;
-                }
+            
 
-                self.set_ly(self.get_ly() + 1);
-                
-            }
+            self.renderer();
+            
             self.clock += 1;
         }
     }
 
+    fn trigger_interrupts(&mut self) {
+        if self.get_ly() == self.get_lyc() {
+            self.set_stat(self.get_stat() | 0b100);
+            // TODO implement other interrupts than LY == LYC
+        }
+        if  ((self.get_stat() >> 6) & (self.get_stat() >> 2) & 1) != 0 {
+            self.logger.log_info("LY=LYC interrupt triggered");
+            self.set_if(self.get_if() | 0b10);
+        }
+        if (self.get_stat() & 0b11) == 0b01 {
+            self.logger.log_info("VBlank interrupt triggered");
+            self.set_if(self.get_if() | 0b01);
+            if ((self.get_stat() >> 4) & 1) != 0 {
+                self.set_if(self.get_if() | 0b10);
+            }
+            return;
+        }
+        
+    }
+
+    fn handle_interrupt(&mut self) {
+        match self.isr.state {
+            IsrState::ReadIF => {
+                self.isr.iflag = self.get_if();
+                self.isr.state = IsrState::ReadIE;
+            }
+            IsrState::ReadIE => {
+                self.isr.ienable = self.get_ie();
+                // get highest priority interrupt
+                for i in 0..5 {
+                    if (((self.isr.iflag >> i) & 1) & ((self.isr.ienable >> i) & 1)) != 0 {
+                        self.set_if(self.get_if() & !(1 << i)); // clear interrupt
+                        self.isr.ir_addr = [0x40, 0x48, 0x50, 0x58, 0x60][i];
+                        break;
+                    }
+                }
+                // if no interrupt requested then set IsrState::None
+                if self.isr.ir_addr == 0 {
+                    self.isr.state = IsrState::None
+                }
+                // else set IsrState::Push1, clear interrupt and set ime to false
+                self.isr.state = IsrState::Push1;
+                self.ime = false;
+            }
+            IsrState::Push1 => {
+                self.registers.sp -= 1;
+                self.memory.write(self.registers.sp, ((self.registers.pc & 0xff00) >> 8) as u8);
+                self.isr.state = IsrState::Push2;
+            }
+            IsrState::Push2 => {
+                self.registers.sp -= 1;
+                self.memory.write(self.registers.sp, (self.registers.pc & 0xff) as u8);
+                self.isr.state = IsrState::Jump;
+            }
+            IsrState::Jump => {
+                self.registers.pc = self.isr.ir_addr;
+                self.isr.state = IsrState::None;
+                self.isr.ir_addr = 0;
+            }
+            IsrState::None => {
+                self.logger.log_error("handle_interrupts called when isr.state == IsrState::None");
+            }
+
+        }
+    }
+    fn update_ime(&mut self, after_fde: bool)
+    {
+        if let Some(id) = self.ime_dispatch {
+            if id > 0 {
+                self.ime_dispatch = Some(id - 1);
+            } else {
+                match after_fde {
+                    false =>  self.logger.log_error("attempt to set IME at wrong part of cycle"),
+                    true => self.ime = true
+                }
+                self.ime_dispatch = None;
+            }
+        }
+    }
+    
+    fn renderer(&mut self) {
+        if self.clock % 114 == 0 {
+            if self.get_ly() == 144 { // VBlank entered
+                self.window_line_counter = 0;
+                self.set_stat(self.get_stat() & 0b11111101);
+            } else {
+                self.set_stat(self.get_stat() & 0b11111110);
+            
+            }
+        }
+        else if self.clock % 114 == 20 {
+            if self.get_ly() < 144 { //Drawing
+                self.render_scanline();
+                self.set_stat(self.get_stat() & 0b11111111);
+            
+            }
+        } else if self.clock % 114 == 63 {
+            // HBlank
+            self.set_stat(self.get_stat() & 0b11111100);
+            self.set_ly(self.get_ly() + 1);
+        } else if self.clock % 114 == 113 {
+            if self.get_ly() == 154 { // VBlank exited
+                self.display = self.display_temp;
+                self.set_ly(0);
+            }
+        }
+    }
+    
     fn render_background(&mut self) {
+        if self.get_lcdc() & 1 == 0 {
+            return
+        }
         let tilemap: u16 = match self.get_lcdc() & 8 {
             0 => 0x9800,
             _ => 0x9c00,
@@ -187,7 +277,35 @@ impl GameBoy {
     }
 
     fn render_window(&mut self) {
-        
+        let tilemap: u16 = match self.get_lcdc() & 8 {
+            0 => 0x9800,
+            _ => 0x9c00,
+        };
+        for x in 0..160 {
+            let x_plus_scroll =( x as u16 + self.get_scx() as u16 ) % 256;
+            let y_plus_scroll = self.window_line_counter as u16;
+            let tile_x = x_plus_scroll % 8;
+            let tile_y = y_plus_scroll % 8;
+
+            let tile_num = self.memory.read(tilemap + x_plus_scroll / 8 + 32 * (y_plus_scroll as u16 / 8));
+
+            let mut tile_addr: u16;
+            match self.get_lcdc() & 0x10 {
+                0 => {
+                    tile_addr = (0x9000 + (tile_num as i32 * 16)) as u16;
+                }
+                _ => {
+                    tile_addr = 0x8000 + (tile_num as u16) * 16;
+                }
+            };
+
+            tile_addr += 2 * tile_y;
+            let data_low = (self.memory.read(tile_addr) >> (7 - tile_x)) & 1;
+            let data_high = (self.memory.read(tile_addr + 1) >> (7 - tile_x)) & 1;
+            
+            self.display_temp[self.get_ly() as usize * 160 + x as usize] = self.map_background_palette(data_low | (data_high << 1));
+
+        };
     }
     fn _render_sprite_init(&mut self) {
         
@@ -197,12 +315,12 @@ impl GameBoy {
     }
 
     fn render_scanline(&mut self) {
-        
         if self.get_lcdc() & 1 != 0 {
             self.render_background();
         }
         if (self.get_lcdc()&0x20 != 0) && self.get_wx() < 166 && self.get_ly() >= self.get_wy() {
             self.render_window();
+            self.window_line_counter += 1;
         }
     }
     fn get_ly(&self) -> u8 {
@@ -238,13 +356,26 @@ impl GameBoy {
     }
 
     fn get_ie(&self) -> u8 {
-        self.memory.read(0xFFFF) & 0b11111
+        self.memory.read(0xFFFF)
     }
 
     fn get_if(&self) -> u8 {
-        self.memory.read(0xFF0F) & 0b11111
+        self.memory.read(0xFF0F)
     }
-
-
+    fn set_if(&mut self, data: u8) {
+        self.memory.write(0xFF0F, data);
+    }
+    
+    fn get_lyc(&self) -> u8 {
+        self.memory.read(0xFF45)
+    }
+    
+    fn set_stat(&mut self, data: u8) {
+        self.memory.write(0xFF41, data)
+    }
+    
+    fn get_stat(&self) -> u8 {
+        self.memory.read(0xFF41)
+    }
 
 }

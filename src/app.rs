@@ -25,13 +25,13 @@ impl ScgbGui {
 
         let data: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/dmg_boot.bin")
             .expect("couldnt read file");
-        let tetris: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/tetris.gb")
+        let rom: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/tetris.gb")
             .expect("couldnt read file");
         for i in 0..=0xFF {
             gameboy.memory.rom[i] = data[i];
         }
-        for i in 0x00..tetris.len() {
-            gameboy.memory.write(i as u16, tetris[i])
+        for i in 0x00..rom.len() {
+            gameboy.memory.write(i as u16, rom[i])
         }
 
         Self {
