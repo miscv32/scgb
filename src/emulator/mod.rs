@@ -4,7 +4,7 @@ impl ScgbGui {
     pub fn draw(&mut self) {
         let buf = self.renderer.buffer_mut();
 
-        for _ in 0..175560 {
+        for _ in 0..(17556*4) {
             self.gameboy.tick();
         }
         for y in 0..144 {

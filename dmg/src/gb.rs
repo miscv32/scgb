@@ -68,7 +68,7 @@ pub fn init() -> GameBoy {
     };
 
     let logger = log::Logger {
-        level: log::LogLevel::Info,
+        level: log::LogLevel::Error,
     };
 
     let isr = Isr {
@@ -155,10 +155,12 @@ impl GameBoy {
     fn handle_interrupt(&mut self) {
         match self.isr.state {
             IsrState::ReadIF => {
+                self.logger.log_info("ISR: ReadIF");
                 self.isr.iflag = self.get_if();
                 self.isr.state = IsrState::ReadIE;
             }
             IsrState::ReadIE => {
+                self.logger.log_info("ISR: ReadIE");
                 self.isr.ienable = self.get_ie();
                 // get highest priority interrupt
                 for i in 0..5 {
@@ -177,17 +179,21 @@ impl GameBoy {
                 self.ime = false;
             }
             IsrState::Push1 => {
+                self.logger.log_info("ISR: Push1");
                 self.registers.sp -= 1;
                 self.memory.write(self.registers.sp, ((self.registers.pc & 0xff00) >> 8) as u8);
                 self.isr.state = IsrState::Push2;
             }
             IsrState::Push2 => {
+                self.logger.log_info("ISR: Push2");
                 self.registers.sp -= 1;
                 self.memory.write(self.registers.sp, (self.registers.pc & 0xff) as u8);
                 self.isr.state = IsrState::Jump;
             }
             IsrState::Jump => {
+                self.logger.log_info("ISR: Jump");
                 self.registers.pc = self.isr.ir_addr;
+                self.logger.log_info(&format!("ISR: Jumping to: {:#x}", self.isr.ir_addr));
                 self.isr.state = IsrState::None;
                 self.isr.ir_addr = 0;
             }
@@ -217,6 +223,8 @@ impl GameBoy {
             if self.get_ly() == 144 { // VBlank entered
                 self.window_line_counter = 0;
                 self.set_stat(self.get_stat() & 0b11111101);
+                self.set_if(self.get_if() | 1);
+                self.logger.log_info("Renderer: Entered VBlank");
             } else {
                 self.set_stat(self.get_stat() & 0b11111110);
             

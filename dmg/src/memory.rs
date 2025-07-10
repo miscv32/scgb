@@ -33,6 +33,11 @@ impl Memory for MappedRAM {
         if (address as usize) >= GB_RAM_SIZE {
             ()
         } else {
+            // check we are not trying to write to a cartridge or otherwise illegal area
+            
+            if (self.main[0xFF50] != 0) && ((address <= 0x7FFF) || (address >= 0xE000 && address <= 0xFDFF) || (address >= 0xFEA0 && address <= 0xFEFF)) {
+                return;
+            } 
             self.main[address as usize] = data
         }
     }

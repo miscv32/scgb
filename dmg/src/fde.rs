@@ -325,6 +325,9 @@ impl GameBoy {
                 self.registers.pc += 1;
                 let msb = self.memory.read(self.registers.pc);
                 self.registers.pc += 1;
+                if unsigned_16(msb, lsb) == 0x2000 {
+                    self.logger.log_error("MBC");
+                }
                 self.memory.write(unsigned_16(msb, lsb), self.registers.a);
                 Some(4)
             }
