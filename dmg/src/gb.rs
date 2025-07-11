@@ -1,5 +1,4 @@
-use crate::memory::{self, MappedRAM};
-use crate::memory::Memory;
+use crate::memory::{self, MappedRAM, Memory, MappingType};
 use crate::log;
 pub struct Registers {
     pub a: u8,
@@ -46,6 +45,9 @@ pub struct GameBoy {
     pub logger: log::Logger,
     pub isr: Isr,
     window_line_counter: u8,
+    pub test_mode: bool,
+    keys_ssba: u8,
+    keys_dulr: u8,
 }
 
 pub fn init() -> GameBoy {
@@ -65,10 +67,11 @@ pub fn init() -> GameBoy {
     let memory: MappedRAM = MappedRAM {
         main: [0u8; memory::GB_RAM_SIZE],
         rom: [0; memory::GB_ROM_SIZE],
+        mapping_type: MappingType::Default,
     };
 
     let logger = log::Logger {
-        level: log::LogLevel::Error,
+        level: log::LogLevel::None,
     };
 
     let isr = Isr {
@@ -91,6 +94,9 @@ pub fn init() -> GameBoy {
         logger: logger,
         isr: isr,
         window_line_counter: 0,
+        test_mode: false,
+        keys_ssba: 0xF,
+        keys_dulr: 0xF,
     }
 }
 
@@ -103,13 +109,15 @@ impl GameBoy {
             
             self.update_ime(false);
             
-            self.trigger_interrupts();
+            if self.test_mode == false {
+                self.trigger_interrupts();
 
-            if self.isr.state != IsrState::None {
-                self.handle_interrupt();
-                return;
-            } else if self.ime && ((self.get_ie() & self.get_if()) != 0) {
-                self.isr.state = IsrState::ReadIF;    
+                if self.isr.state != IsrState::None {
+                    self.handle_interrupt();
+                    return;
+                } else if self.ime && ((self.get_ie() & self.get_if()) != 0) {
+                    self.isr.state = IsrState::ReadIF;    
+                }
             }
 
             if let Some(cycles_to_idle) = self.cycles_to_idle {
@@ -124,12 +132,51 @@ impl GameBoy {
 
             self.update_ime(true);
 
-            
-
-            self.renderer();
+            if self.test_mode == false { 
+                self.renderer();
+                
+                let buttons = (self.get_joypad() >> 5) == 0;
+                let dpad = (self.get_joypad() >> 4) == 0;
+                let lower_nibble: u8;
+                if !buttons && !dpad {
+                    lower_nibble = 0xF;
+                } else if buttons && dpad {
+                    lower_nibble = self.keys_ssba | self.keys_dulr;
+                } else if buttons {
+                    lower_nibble = self.keys_ssba;
+                } else {
+                    lower_nibble = self.keys_dulr;
+                }
+                let old_jp = self.get_joypad();
+                self.set_joypad((old_jp & 0xF0) | lower_nibble);
+                if self.get_joypad() & 0x0F != old_jp & 0x0F {
+                    self.set_if(self.get_if() | (1<<4));
+                }
+                
+            };
             
             self.clock += 1;
         }
+    }
+
+    pub fn press_key (&mut self, mut key_id: u8) {
+        // key id : key name
+        // 3: start, 2: select 1: b, 0: a, 7: down, 6: up, 5: left, 4: right
+        let mut keys: &mut u8 = &mut self.keys_ssba;
+        if key_id > 3 {
+            keys = &mut self.keys_dulr; 
+            key_id -= 4;
+        };
+        *keys &= !1 << key_id;
+    }
+
+    pub fn unpress_key(&mut self, mut key_id: u8) {
+        let mut keys: &mut u8 = &mut self.keys_ssba;
+        if key_id > 3 {
+            keys = &mut self.keys_dulr; 
+            key_id -= 4;
+        };
+        *keys |= 1 << key_id;
     }
 
     fn trigger_interrupts(&mut self) {
@@ -384,6 +431,12 @@ impl GameBoy {
     
     fn get_stat(&self) -> u8 {
         self.memory.read(0xFF41)
+    }
+    fn get_joypad(&self) -> u8 {
+        self.memory.read(0xFF00)
+    }
+    fn set_joypad(&mut self, data: u8) {
+        self.memory.main[0xFF00] = data; // intentionally bypassing memory.write here so we can set all bits.
     }
 
 }

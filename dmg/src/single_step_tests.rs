@@ -2,7 +2,7 @@
 #[cfg(test)]
 mod single_step_test {
     use crate::gb;
-    use crate::memory::Memory;
+    use crate::memory::{Memory, MappingType};
     use std::{fs, path::Path, path::PathBuf};
 
     type SingleStepTestsRam = Vec<(u16, u8)>;
@@ -86,6 +86,8 @@ mod single_step_test {
     })]
     fn datatest_run_test_file(path: &Path) {
         let mut gameboy = gb::init();
+        gameboy.test_mode = true;
+        gameboy.memory.mapping_type = MappingType::Flat;
         run_test_file(&mut gameboy, &PathBuf::from(path));
     }
 
