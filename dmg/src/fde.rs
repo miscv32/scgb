@@ -1,4 +1,4 @@
-use crate::{gb::GameBoy, memory::Memory, util::*};
+use crate::{gb::GameBoy, util::*};
 
 impl GameBoy {
     pub fn fetch_decode_execute(&mut self, opcode: u8) -> Option<u8> {
@@ -106,14 +106,14 @@ impl GameBoy {
 
             0x08 => {
                 self.logger.log_disassembly("LD (u16), SP");
-                let nn_lsb: u8 = self.memory.read(self.registers.pc);
+                let nn_lsb: u8 = self.read(self.registers.pc);
                 self.registers.pc += 1;
-                let nn_msb: u8 = self.memory.read(self.registers.pc);
+                let nn_msb: u8 = self.read(self.registers.pc);
                 self.registers.pc += 1;
                 let mut nn: u16 = unsigned_16(nn_msb, nn_lsb);
-                self.memory.write(nn, lsb(self.registers.sp));
+                self.write(nn, lsb(self.registers.sp));
                 nn += 1;
-                self.memory.write(nn, msb(self.registers.sp));
+                self.write(nn, msb(self.registers.sp));
                 Some(5)
             }
             0x10 => {
@@ -123,7 +123,7 @@ impl GameBoy {
             }
             0x18 => {
                 self.logger.log_disassembly("JR i8");
-                let e = self.memory.read(self.registers.pc) as i8;
+                let e = self.read(self.registers.pc) as i8;
                 self.registers.pc += 1;
                 self.registers.pc = (self.registers.pc as i16 + e as i16) as u16;
                 Some(3)
@@ -135,7 +135,7 @@ impl GameBoy {
             }
             0xCB => {
                 // 0xCB prefixed opcodes
-                let cb_opcode: u8 = self.memory.read(self.registers.pc);
+                let cb_opcode: u8 = self.read(self.registers.pc);
                 let r8: u8 = cb_opcode & 0b111;
                 let bit = (cb_opcode >> 3) & 0b111;
                 match cb_opcode >> 6 {
@@ -263,7 +263,7 @@ impl GameBoy {
                                 self.set_flag_z(self.get_r8(r8) == 0);
                                 if r8 == 6 {
                                     Some(4)
-                                } else { 
+                                } else {
                                     Some(2)
                                 }
                             }
@@ -281,7 +281,6 @@ impl GameBoy {
                         } else {
                             Some(2)
                         }
-
                     }
                     0b10 => {
                         self.logger.log_disassembly("RES");
@@ -300,15 +299,15 @@ impl GameBoy {
             }
             0xE0 => {
                 self.logger.log_disassembly("LDH (u8), A");
-                let n = self.memory.read(self.registers.pc);
+                let n = self.read(self.registers.pc);
                 self.registers.pc += 1;
-                self.memory.write(unsigned_16(0xFF, n), self.registers.a);
+                self.write(unsigned_16(0xFF, n), self.registers.a);
                 Some(3)
             }
             0xE8 => {
                 // ADD SP i8
                 self.logger.log_disassembly("ADD SP, i8");
-                let e: i8 = self.memory.read(self.registers.pc) as i8;
+                let e: i8 = self.read(self.registers.pc) as i8;
                 self.registers.pc += 1;
                 self.set_flag_z(false);
                 self.set_flag_n(false);
@@ -321,33 +320,33 @@ impl GameBoy {
             0xEA => {
                 // LD (u16), A
                 self.logger.log_disassembly("LD (u16), A");
-                let lsb = self.memory.read(self.registers.pc);
+                let lsb = self.read(self.registers.pc);
                 self.registers.pc += 1;
-                let msb = self.memory.read(self.registers.pc);
+                let msb = self.read(self.registers.pc);
                 self.registers.pc += 1;
                 if unsigned_16(msb, lsb) == 0x2000 {
                     self.logger.log_error("MBC");
                 }
-                self.memory.write(unsigned_16(msb, lsb), self.registers.a);
+                self.write(unsigned_16(msb, lsb), self.registers.a);
                 Some(4)
             }
             0xF0 => {
                 // LD A FF00 + u8
                 self.logger.log_disassembly("LDH A, (u8)");
-                let lsb = self.memory.read(self.registers.pc);
+                let lsb = self.read(self.registers.pc);
                 self.registers.pc += 1;
-                self.registers.a = self.memory.read(unsigned_16(0xFF, lsb));
+                self.registers.a = self.read(unsigned_16(0xFF, lsb));
                 Some(3)
             }
             0xF2 => {
                 self.logger.log_disassembly("LDH A, C");
-                self.registers.a = self.memory.read(unsigned_16(0xFF, self.registers.c));
+                self.registers.a = self.read(unsigned_16(0xFF, self.registers.c));
                 Some(2)
             }
             0xF8 => {
                 // LD HL SP + i8
                 self.logger.log_disassembly("LD HL, SP+i8");
-                let e: i8 = self.memory.read(self.registers.pc) as i8;
+                let e: i8 = self.read(self.registers.pc) as i8;
                 self.registers.pc += 1;
                 self.set_flag_z(false);
                 self.set_flag_n(false);
@@ -365,32 +364,31 @@ impl GameBoy {
             }
             0xE2 => {
                 self.logger.log_disassembly("LDH (C), A");
-                
-                self.memory
-                    .write(unsigned_16(0xFF, self.registers.c), self.registers.a);
-                
+
+                self.write(unsigned_16(0xFF, self.registers.c), self.registers.a);
+
                 Some(2)
             }
             0xFA => {
                 self.logger.log_disassembly("LD A, (u16)");
-                let lsb = self.memory.read(self.registers.pc);
+                let lsb = self.read(self.registers.pc);
                 self.registers.pc += 1;
-                let msb = self.memory.read(self.registers.pc);
+                let msb = self.read(self.registers.pc);
                 self.registers.pc += 1;
-                self.registers.a = self.memory.read(unsigned_16(msb, lsb));
+                self.registers.a = self.read(unsigned_16(msb, lsb));
                 Some(4)
             }
             0xCD => {
                 // CALL u16
                 self.logger.log_disassembly("CALL u16");
-                let ls_byte = self.memory.read(self.registers.pc);
+                let ls_byte = self.read(self.registers.pc);
                 self.registers.pc += 1;
-                let ms_byte = self.memory.read(self.registers.pc);
+                let ms_byte = self.read(self.registers.pc);
                 self.registers.pc += 1;
                 self.registers.sp -= 1;
-                self.memory.write(self.registers.sp, msb(self.registers.pc));
+                self.write(self.registers.sp, msb(self.registers.pc));
                 self.registers.sp -= 1;
-                self.memory.write(self.registers.sp, lsb(self.registers.pc));
+                self.write(self.registers.sp, lsb(self.registers.pc));
                 self.registers.pc = unsigned_16(ms_byte, ls_byte);
                 Some(6)
             }
@@ -398,9 +396,9 @@ impl GameBoy {
             0xC9 => {
                 // RET
                 self.logger.log_disassembly("RET");
-                let lsb = self.memory.read(self.registers.sp);
+                let lsb = self.read(self.registers.sp);
                 self.registers.sp += 1;
-                let msb = self.memory.read(self.registers.sp);
+                let msb = self.read(self.registers.sp);
                 self.registers.sp += 1;
                 self.registers.pc = unsigned_16(msb, lsb);
                 Some(4)
@@ -409,9 +407,9 @@ impl GameBoy {
                 // RETI
                 self.ime = true; // "it works as ei ret, so the ret eats whatever cycle delay ei had"
                 self.logger.log_disassembly("RETI");
-                let lsb = self.memory.read(self.registers.sp);
+                let lsb = self.read(self.registers.sp);
                 self.registers.sp += 1;
-                let msb = self.memory.read(self.registers.sp);
+                let msb = self.read(self.registers.sp);
                 self.registers.sp += 1;
                 self.registers.pc = unsigned_16(msb, lsb);
                 Some(4)
@@ -427,7 +425,7 @@ impl GameBoy {
                 // ADD
                 self.logger.log_disassembly("ADD u8");
                 let left: u8 = self.registers.a;
-                let right: u8 = self.memory.read(self.registers.pc);
+                let right: u8 = self.read(self.registers.pc);
                 self.registers.pc += 1;
                 self.registers.a += right;
                 self.set_flag_z(self.registers.a == 0);
@@ -441,7 +439,7 @@ impl GameBoy {
                 self.logger.log_disassembly("ADC u8");
                 let c_save: u8 = self.get_flag_c();
                 let left: u8 = self.registers.a;
-                let right: u8 = self.memory.read(self.registers.pc);
+                let right: u8 = self.read(self.registers.pc);
                 self.registers.pc += 1;
                 self.registers.a += right + c_save;
                 self.set_flag_z(self.registers.a == 0);
@@ -454,7 +452,7 @@ impl GameBoy {
                 // SUB
                 self.logger.log_disassembly("SUB u8");
                 let left: u8 = self.registers.a;
-                let right: u8 = self.memory.read(self.registers.pc);
+                let right: u8 = self.read(self.registers.pc);
                 self.registers.pc += 1;
                 self.registers.a -= right;
                 self.set_flag_z(self.registers.a == 0);
@@ -468,7 +466,7 @@ impl GameBoy {
                 self.logger.log_disassembly("SBC u8");
                 let c_save: u8 = self.get_flag_c();
                 let left: u8 = self.registers.a;
-                let right: u8 = self.memory.read(self.registers.pc);
+                let right: u8 = self.read(self.registers.pc);
                 self.registers.pc += 1;
                 self.registers.a = left - right - c_save;
                 self.set_flag_z(self.registers.a == 0);
@@ -480,7 +478,7 @@ impl GameBoy {
             0xE6 => {
                 // AND
                 self.logger.log_disassembly("AND u8");
-                self.registers.a &= self.memory.read(self.registers.pc);
+                self.registers.a &= self.read(self.registers.pc);
                 self.registers.pc += 1;
                 self.set_flag_z(self.registers.a == 0);
                 self.set_flag_n(false);
@@ -491,7 +489,7 @@ impl GameBoy {
             0xEE => {
                 // XOR
                 self.logger.log_disassembly("XOR u8");
-                self.registers.a ^= self.memory.read(self.registers.pc);
+                self.registers.a ^= self.read(self.registers.pc);
                 self.registers.pc += 1;
                 self.set_flag_z(self.registers.a == 0);
                 self.set_flag_n(false);
@@ -501,7 +499,8 @@ impl GameBoy {
             }
             0xF6 => {
                 // Or
-                self.logger.log_disassembly("OR u8");               self.registers.a |= self.memory.read(self.registers.pc);
+                self.logger.log_disassembly("OR u8");
+                self.registers.a |= self.read(self.registers.pc);
                 self.registers.pc += 1;
                 self.set_flag_z(self.registers.a == 0);
                 self.set_flag_n(false);
@@ -513,7 +512,7 @@ impl GameBoy {
                 // CP
                 self.logger.log_disassembly("CP u8");
                 let left: u8 = self.registers.a;
-                let right: u8 = self.memory.read(self.registers.pc);
+                let right: u8 = self.read(self.registers.pc);
                 self.registers.pc += 1;
                 let result: u8 = left - right;
                 self.set_flag_z(result == 0);
@@ -532,15 +531,15 @@ impl GameBoy {
                 self.logger.log_disassembly("EI");
                 self.ime_dispatch = Some(2);
                 Some(1)
-            } 
+            }
             _ => {
                 let r16 = (opcode >> 4) & 0b11;
                 if (opcode & 0b11_00_1111) == 0b00_00_0001 {
                     // LD r16 u16
                     self.logger.log_disassembly("LD r16, u16");
-                    let lsb = self.memory.read(self.registers.pc);
+                    let lsb = self.read(self.registers.pc);
                     self.registers.pc += 1;
-                    let msb = self.memory.read(self.registers.pc);
+                    let msb = self.read(self.registers.pc);
                     self.registers.pc += 1;
                     self.set_r16_group_1(r16, unsigned_16(msb, lsb));
                     return Some(3);
@@ -571,13 +570,13 @@ impl GameBoy {
                     // LD (r16), A
                     self.logger.log_disassembly("LD (r16), A");
                     let r16_value = self.get_r16_group_2(r16);
-                    self.memory.write(r16_value, self.registers.a);
+                    self.write(r16_value, self.registers.a);
                     return Some(2);
                 } else if (opcode & 0b11_00_1111) == 0b00_00_1010 {
                     // LD A, (r16)
                     self.logger.log_disassembly("LD A, (r16)");
                     let r16_value: u16 = self.get_r16_group_2(r16);
-                    self.registers.a = self.memory.read(r16_value);
+                    self.registers.a = self.read(r16_value);
                     return Some(2);
                 }
 
@@ -585,7 +584,7 @@ impl GameBoy {
                     // LD r8, u8
                     self.logger.log_disassembly("LD r8, u8");
                     let r8 = opcode >> 3;
-                    self.set_r8(r8, self.memory.read(self.registers.pc));
+                    self.set_r8(r8, self.read(self.registers.pc));
                     self.registers.pc += 1;
                     return Some(3);
                 } else if (opcode & 0b11_000_111) == 0b00_000_100 {
@@ -631,7 +630,7 @@ impl GameBoy {
                         3 => condition = self.get_flag_c() != 0,
                         _ => panic!("not possible condition - JR conditional"),
                     }
-                    let e = self.memory.read(self.registers.pc) as i8;
+                    let e = self.read(self.registers.pc) as i8;
                     self.registers.pc += 1;
                     if condition {
                         self.registers.pc = (self.registers.pc as i16 + e as i16) as u16;
@@ -763,7 +762,7 @@ impl GameBoy {
                         if r8 == 6 {
                             return Some(2);
                         } else {
-                            return Some(1)
+                            return Some(1);
                         }
                     }
                 }
@@ -780,9 +779,9 @@ impl GameBoy {
                             } else {
                                 mask = 0xFF
                             }
-                            let lsb = self.memory.read(self.registers.sp) & mask;
+                            let lsb = self.read(self.registers.sp) & mask;
                             self.registers.sp += 1;
-                            let msb = self.memory.read(self.registers.sp);
+                            let msb = self.read(self.registers.sp);
                             self.registers.sp += 1;
                             self.set_r16_group_3(r16, unsigned_16(msb, lsb));
                             return Some(3);
@@ -799,9 +798,9 @@ impl GameBoy {
                                 mask = 0xFF
                             }
                             self.registers.sp -= 1;
-                            self.memory.write(self.registers.sp, msb(r16_value));
+                            self.write(self.registers.sp, msb(r16_value));
                             self.registers.sp -= 1;
-                            self.memory.write(self.registers.sp, lsb(r16_value) & mask);
+                            self.write(self.registers.sp, lsb(r16_value) & mask);
                             return Some(4);
                         }
                         _ => (),
@@ -820,9 +819,9 @@ impl GameBoy {
                         _ => panic!("not possible condition - RET conditional"),
                     }
                     if condition {
-                        let lsb = self.memory.read(self.registers.sp);
+                        let lsb = self.read(self.registers.sp);
                         self.registers.sp += 1;
-                        let msb = self.memory.read(self.registers.sp);
+                        let msb = self.read(self.registers.sp);
                         self.registers.sp += 1;
                         self.registers.pc = unsigned_16(msb, lsb);
                         return Some(5);
@@ -831,9 +830,9 @@ impl GameBoy {
                     }
                 } else if (opcode & 0b111_00_111) == 0b110_00_100 {
                     self.logger.log_disassembly("CALL conditional");
-                    let ls_byte = self.memory.read(self.registers.pc);
+                    let ls_byte = self.read(self.registers.pc);
                     self.registers.pc += 1;
-                    let ms_byte = self.memory.read(self.registers.pc);
+                    let ms_byte = self.read(self.registers.pc);
                     self.registers.pc += 1;
                     let condition;
                     match (opcode >> 3) & 0b11 {
@@ -847,9 +846,9 @@ impl GameBoy {
                     }
                     if condition {
                         self.registers.sp -= 1;
-                        self.memory.write(self.registers.sp, msb(self.registers.pc));
+                        self.write(self.registers.sp, msb(self.registers.pc));
                         self.registers.sp -= 1;
-                        self.memory.write(self.registers.sp, lsb(self.registers.pc));
+                        self.write(self.registers.sp, lsb(self.registers.pc));
                         self.registers.pc = unsigned_16(ms_byte, ls_byte);
                         return Some(6);
                     } else {
@@ -868,9 +867,9 @@ impl GameBoy {
                         3 => condition = self.get_flag_c() != 0,
                         _ => panic!("not possible condition - JP conditional"),
                     }
-                    let lsb = self.memory.read(self.registers.pc);
+                    let lsb = self.read(self.registers.pc);
                     self.registers.pc += 1;
-                    let msb = self.memory.read(self.registers.pc);
+                    let msb = self.read(self.registers.pc);
                     self.registers.pc += 1;
                     if condition {
                         // JP conditional, u16
@@ -884,9 +883,9 @@ impl GameBoy {
                     self.logger.log_disassembly("RST");
                     let exp = opcode & 0b00_111_000;
                     self.registers.sp -= 1;
-                    self.memory.write(self.registers.sp, msb(self.registers.pc));
+                    self.write(self.registers.sp, msb(self.registers.pc));
                     self.registers.sp -= 1;
-                    self.memory.write(self.registers.sp, lsb(self.registers.pc));
+                    self.write(self.registers.sp, lsb(self.registers.pc));
                     self.registers.pc = unsigned_16(0x00, exp);
                     return Some(4);
                 }
@@ -894,15 +893,18 @@ impl GameBoy {
                 if (opcode & 0b11_000_111) == 0b11_000_011 {
                     if (opcode >> 3) & 0b111 == 0 {
                         self.logger.log_disassembly("JP unconditional");
-                        let lsb = self.memory.read(self.registers.pc);
+                        let lsb = self.read(self.registers.pc);
                         self.registers.pc += 1;
-                        let msb = self.memory.read(self.registers.pc);
+                        let msb = self.read(self.registers.pc);
                         self.registers.pc += 1;
                         self.registers.pc = unsigned_16(msb, lsb);
                         return Some(4);
                     }
                 }
-                self.logger.log_error(&format!("Hit unimplemented or illegal instruction! {:#x}", opcode));
+                self.logger.log_error(&format!(
+                    "Hit unimplemented or illegal instruction! {:#x}",
+                    opcode
+                ));
                 return None;
             }
         }

@@ -1,4 +1,4 @@
-use crate::{gb::GameBoy, memory::Memory};
+use crate::{gb::GameBoy};
 
 pub fn msb(two_bytes: u16) -> u8 {
     (two_bytes >> 8) as u8
@@ -112,7 +112,7 @@ impl GameBoy {
             3 => self.registers.e = data,
             4 => self.registers.h = data,
             5 => self.registers.l = data,
-            6 => self.memory.write(self.get_hl(), data),
+            6 => self.write(self.get_hl(), data),
             7 => self.registers.a = data,
             _ => (),
         }
@@ -126,7 +126,7 @@ impl GameBoy {
             3 => self.registers.e,
             4 => self.registers.h,
             5 => self.registers.l,
-            6 => self.memory.read(self.get_hl()),
+            6 => self.read(self.get_hl()),
             7 => self.registers.a,
             _ => panic!("get_r8"),
         }
@@ -187,5 +187,9 @@ impl GameBoy {
             3 => self.set_af(value),
             _ => panic!("get_r16_group_2 recieved illegal value"),
         }
+    }
+    
+    pub fn map_background_palette(&self, data: u8) -> u8 {
+        (self.registers.bg_pal >> (data << 1)) & 0b11
     }
 }
