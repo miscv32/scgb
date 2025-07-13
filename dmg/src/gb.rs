@@ -48,6 +48,8 @@ pub struct GameBoy {
     pub test_mode: bool,
     keys_ssba: u8,
     keys_dulr: u8,
+    tima_period: u16,
+    tma_old: u8,
 }
 
 pub fn init() -> GameBoy {
@@ -71,7 +73,7 @@ pub fn init() -> GameBoy {
     };
 
     let logger = log::Logger {
-        level: log::LogLevel::None,
+        level: log::LogLevel::Info,
     };
 
     let isr = Isr {
@@ -97,6 +99,8 @@ pub fn init() -> GameBoy {
         test_mode: false,
         keys_ssba: 0xF,
         keys_dulr: 0xF,
+        tima_period: 256, // TODO check if thsi is a valid default
+        tma_old: 0,
     }
 }
 
@@ -108,7 +112,8 @@ impl GameBoy {
         if self.running {
             
             self.update_ime(false);
-            
+            self.tma_old = self.get_tma();
+
             if self.test_mode == false {
                 self.trigger_interrupts();
 
@@ -153,10 +158,64 @@ impl GameBoy {
                     self.set_if(self.get_if() | (1<<4));
                 }
                 
+            self.update_timers();
+                
             };
             
             self.clock += 1;
+
         }
+    }
+
+    pub fn update_timers(&mut self) {
+        if self.clock % 64 == 0 {
+            self.set_div(self.get_div() + 1);
+        }
+        if (self.get_tac() >> 2) & 1 == 1 {
+            self.tima_period = match self.get_tac() & 0x3 {
+                0 => 256,
+                1 => 4,
+                2 => 16,
+                3 => 64,
+                _ => panic!("Should be mathematically impossible")
+            }
+        }
+        if (self.clock % self.tima_period as u128) == 0 {
+            if (self.get_tima() as u16 + 1) > 0xFF {
+                self.set_tima(self.tma_old);
+                self.set_if(self.get_if() | (0x4));
+            } else {
+                self.set_tima(self.get_tima() + 1);
+            }
+        }
+    }
+
+    pub fn get_tima(&self) -> u8 {
+        self.memory.read(0xFF05)
+    }
+
+    pub fn set_tima(&mut self, data: u8) {
+        self.memory.main[0xFF05] = data
+    }
+
+    pub fn get_tma(&self) -> u8 {
+        self.memory.read(0xFF06)
+    }
+
+    pub fn set_tma(&mut self, data: u8) {
+        self.memory.main[0xFF06] = data;
+    }
+
+    pub fn get_tac(&self) -> u8 {
+        self.memory.read(0xFF07)
+    }
+
+    pub fn set_div(&mut self, data: u8) {
+        self.memory.main[0xFF04] = data; // normal writes reset DIV
+    }
+
+    pub fn get_div(&self) -> u8 {
+        self.memory.read(0xFF04)
     }
 
     pub fn press_key (&mut self, mut key_id: u8) {
@@ -202,12 +261,10 @@ impl GameBoy {
     fn handle_interrupt(&mut self) {
         match self.isr.state {
             IsrState::ReadIF => {
-                self.logger.log_info("ISR: ReadIF");
                 self.isr.iflag = self.get_if();
                 self.isr.state = IsrState::ReadIE;
             }
             IsrState::ReadIE => {
-                self.logger.log_info("ISR: ReadIE");
                 self.isr.ienable = self.get_ie();
                 // get highest priority interrupt
                 for i in 0..5 {
@@ -226,21 +283,19 @@ impl GameBoy {
                 self.ime = false;
             }
             IsrState::Push1 => {
-                self.logger.log_info("ISR: Push1");
                 self.registers.sp -= 1;
                 self.memory.write(self.registers.sp, ((self.registers.pc & 0xff00) >> 8) as u8);
                 self.isr.state = IsrState::Push2;
             }
             IsrState::Push2 => {
-                self.logger.log_info("ISR: Push2");
                 self.registers.sp -= 1;
                 self.memory.write(self.registers.sp, (self.registers.pc & 0xff) as u8);
                 self.isr.state = IsrState::Jump;
             }
             IsrState::Jump => {
-                self.logger.log_info("ISR: Jump");
                 self.registers.pc = self.isr.ir_addr;
                 self.logger.log_info(&format!("ISR: Jumping to: {:#x}", self.isr.ir_addr));
+                println!("{:#x}",self.registers.b); // should be 1 in 02-interrupts
                 self.isr.state = IsrState::None;
                 self.isr.ir_addr = 0;
             }
@@ -271,7 +326,6 @@ impl GameBoy {
                 self.window_line_counter = 0;
                 self.set_stat(self.get_stat() & 0b11111101);
                 self.set_if(self.get_if() | 1);
-                self.logger.log_info("Renderer: Entered VBlank");
             } else {
                 self.set_stat(self.get_stat() & 0b11111110);
             

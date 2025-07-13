@@ -48,6 +48,11 @@ impl Memory for MappedRAM {
                 if address == 0xFF00 {
                     self.main[address as usize] = data & 0xF0;
                 };
+                // reset DIV on write attempt
+                if address == 0xFF04 {
+                    self.main[address as usize] = 0;
+                }
+                // NB, in real hardware FF07 write may increase TIMA, but we arent emulating this for now
             }
             self.main[address as usize] = data
         }

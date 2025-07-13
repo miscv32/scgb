@@ -11,7 +11,7 @@ impl ScgbGui {
             if ctx.input(|i| i.key_pressed(keymap[j])) {
                 self.gameboy.press_key(j as u8);
                 println!("key {} pressed", j);
-            } else {
+            } else if ctx.input(|i| i.key_released(keymap[j])) {
                 self.gameboy.unpress_key(j as u8);
                 println!("key {} not pressed", j);
             }

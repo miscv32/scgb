@@ -25,7 +25,7 @@ impl ScgbGui {
 
         let data: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/dmg_boot.bin")
             .expect("couldnt read file");
-        let rom: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/tetris.gb")
+        let rom: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/cpu_instrs/individual/02-interrupts.gb")
             .expect("couldnt read file");
         for i in 0..=0xFF {
             gameboy.memory.rom[i] = data[i];
