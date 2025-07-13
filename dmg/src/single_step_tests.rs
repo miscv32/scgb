@@ -2,7 +2,7 @@
 #[cfg(test)]
 mod single_step_test {
     use crate::gb;
-    use crate::memory::{Memory, MappingType};
+    use crate::memory::{MappingType};
     use std::{fs, path::Path, path::PathBuf};
 
     type SingleStepTestsRam = Vec<(u16, u8)>;
@@ -38,7 +38,6 @@ mod single_step_test {
         let test: SingleStepTest = serde_json::from_value::<SingleStepTest>(test_json.clone())
             .expect("Could not deserialise JSON into Rust type");
 
-        // Set up initial state of processor
         gameboy.registers.a = test.initial.a;
         gameboy.registers.f = test.initial.f;
         gameboy.registers.b = test.initial.b;
@@ -54,7 +53,7 @@ mod single_step_test {
 
         // Write to RAM
         for cell in test.initial.ram {
-            gameboy.memory.write(cell.0, cell.1);
+            gameboy.write(cell.0, cell.1);
         }
 
         // tick the CPU
@@ -74,9 +73,8 @@ mod single_step_test {
         assert_eq!(gameboy.registers.sp, test.r#final.sp, "SP mismatch");
         assert_eq!(gameboy.registers.pc, test.r#final.pc, "PC mismatch");
 
-        // Compare the final state of RAM to the test
         for cell in test.r#final.ram {
-            let ram_value: u8 = gameboy.memory.read(cell.0);
+            let ram_value: u8 = gameboy.read(cell.0);
             assert_eq!(ram_value, cell.1, "RAM mismatch at address {:#04X}", cell.0);
         }
     }

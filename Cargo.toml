@@ -25,9 +25,7 @@ log = "0.4.27"
 
 # You only need serde if you want app persistence:
 serde = { version = "1.0.219", features = ["derive"] }
-crossbeam = "0.8.4"
 crossbeam-channel = "0.5.15"
-anyhow = "1.0.98"
 dmg = { version = "0.1.0", path = "dmg" }
 
 # native:

@@ -4,7 +4,7 @@ pub enum LogLevel {
     Info = 1,
     Warning = 2,
     Error = 3,
-    Disassembly = 4,   
+    Disassembly = 4,
 }
 
 pub struct Logger {
@@ -12,7 +12,6 @@ pub struct Logger {
 }
 
 impl Logger {
-
     pub fn log_info(&self, message: &str) {
         if self.level >= LogLevel::Info {
             println!("{}", message)
@@ -36,8 +35,4 @@ impl Logger {
             println!("{}", message)
         }
     }
-
 }
-
-
-

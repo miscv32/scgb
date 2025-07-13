@@ -1,14 +1,11 @@
 use crate::{
-    renderer::{channel::ChannelRenderer, Renderer},
     widgets::framebuf::FrameBufWidget,
 };
 use dmg::gb;
 use dmg::gb::GameBoy;
-use dmg::memory::Memory;
 use std::fs;
 pub struct ScgbGui {
     pub framebuf: FrameBufWidget,
-    pub renderer: ChannelRenderer,
     pub gameboy: GameBoy,
 }
 
@@ -18,25 +15,24 @@ impl ScgbGui {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
-        let renderer = ChannelRenderer::new(160, 144).unwrap();
-        let mut framebuf = FrameBufWidget::new(cc);
-        framebuf.connect(renderer.get_receiver());
+        let framebuf = FrameBufWidget::new(cc);
         let mut gameboy = gb::init();
 
         let data: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/dmg_boot.bin")
             .expect("couldnt read file");
-        let rom: Vec<u8> = fs::read("/home/spearmint/projects/scgb/test_roms/cpu_instrs/individual/02-interrupts.gb")
-            .expect("couldnt read file");
+        let rom: Vec<u8> = fs::read(
+            "/home/spearmint/projects/scgb/test_roms/cpu_instrs/individual/02-interrupts.gb",
+        )
+        .expect("couldnt read file");
         for i in 0..=0xFF {
             gameboy.memory.rom[i] = data[i];
         }
         for i in 0x00..rom.len() {
-            gameboy.memory.write(i as u16, rom[i])
+            gameboy.write(i as u16, rom[i])
         }
 
         Self {
             framebuf,
-            renderer,
             gameboy,
         }
     }
@@ -77,7 +73,7 @@ impl eframe::App for ScgbGui {
                 if padding_height > 0.0 {
                     ui.allocate_space(egui::Vec2::from([1.0, padding_height]));
                 }
-                self.framebuf.draw(ui);
+                self.framebuf.draw(ui, &self.gameboy);
             });
 
             ctx.request_repaint();
