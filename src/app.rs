@@ -76,7 +76,7 @@ impl eframe::App for ScgbGui {
                 self.framebuf.draw(ui, &self.gameboy);
             });
 
-            ctx.request_repaint();
+            ctx.request_repaint(); // TODO make this run at exactly 59.7Hz 
         });
     }
 }

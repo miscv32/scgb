@@ -38,17 +38,17 @@ mod single_step_test {
         let test: SingleStepTest = serde_json::from_value::<SingleStepTest>(test_json.clone())
             .expect("Could not deserialise JSON into Rust type");
 
-        gameboy.registers.a = test.initial.a;
-        gameboy.registers.f = test.initial.f;
-        gameboy.registers.b = test.initial.b;
-        gameboy.registers.c = test.initial.c;
-        gameboy.registers.d = test.initial.d;
-        gameboy.registers.e = test.initial.e;
-        gameboy.registers.h = test.initial.h;
-        gameboy.registers.l = test.initial.l;
-        gameboy.registers.sp = test.initial.sp;
-        gameboy.registers.pc = test.initial.pc;
-        gameboy.running = true;
+        gameboy.r.a = test.initial.a;
+        gameboy.r.f = test.initial.f;
+        gameboy.r.b = test.initial.b;
+        gameboy.r.c = test.initial.c;
+        gameboy.r.d = test.initial.d;
+        gameboy.r.e = test.initial.e;
+        gameboy.r.h = test.initial.h;
+        gameboy.r.l = test.initial.l;
+        gameboy.r.sp = test.initial.sp;
+        gameboy.r.pc = test.initial.pc;
+        gameboy.halted = true;
         gameboy.cycles_to_idle = Some(0);
 
         // Write to RAM
@@ -62,16 +62,16 @@ mod single_step_test {
         }
 
         // Compare the final state of the processor to the test
-        assert_eq!(gameboy.registers.a, test.r#final.a, "A mismatch");
-        assert_eq!(gameboy.registers.f, test.r#final.f, "F mismatch");
-        assert_eq!(gameboy.registers.b, test.r#final.b, "B mismatch");
-        assert_eq!(gameboy.registers.c, test.r#final.c, "C mismatch");
-        assert_eq!(gameboy.registers.d, test.r#final.d, "D mismatch");
-        assert_eq!(gameboy.registers.e, test.r#final.e, "E mismatch");
-        assert_eq!(gameboy.registers.h, test.r#final.h, "H mismatch");
-        assert_eq!(gameboy.registers.l, test.r#final.l, "L mismatch");
-        assert_eq!(gameboy.registers.sp, test.r#final.sp, "SP mismatch");
-        assert_eq!(gameboy.registers.pc, test.r#final.pc, "PC mismatch");
+        assert_eq!(gameboy.r.a, test.r#final.a, "A mismatch");
+        assert_eq!(gameboy.r.f, test.r#final.f, "F mismatch");
+        assert_eq!(gameboy.r.b, test.r#final.b, "B mismatch");
+        assert_eq!(gameboy.r.c, test.r#final.c, "C mismatch");
+        assert_eq!(gameboy.r.d, test.r#final.d, "D mismatch");
+        assert_eq!(gameboy.r.e, test.r#final.e, "E mismatch");
+        assert_eq!(gameboy.r.h, test.r#final.h, "H mismatch");
+        assert_eq!(gameboy.r.l, test.r#final.l, "L mismatch");
+        assert_eq!(gameboy.r.sp, test.r#final.sp, "SP mismatch");
+        assert_eq!(gameboy.r.pc, test.r#final.pc, "PC mismatch");
 
         for cell in test.r#final.ram {
             let ram_value: u8 = gameboy.read(cell.0);

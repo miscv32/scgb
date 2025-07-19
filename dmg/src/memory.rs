@@ -27,37 +27,37 @@ impl GameBoy {
                 if self.memory.main[0xFF50] == 0 && (address as usize) < GB_ROM_SIZE {
                     return self.memory.rom[address as usize];
                 } else if address == 0xFF05 {
-                    return self.registers.tima;
+                    return self.r.tima;
                 } else if address == 0xFF06 {
-                    return self.registers.tma;
+                    return self.r.tma;
                 } else if address == 0xFF07 {
-                    return self.registers.tac;
+                    return self.r.tac;
                 } else if address == 0xFF04 {
-                    return self.registers.div;
+                    return self.r.div;
                 } else if address == 0xFF44 {
-                    return self.registers.ly;
+                    return self.r.ly;
                 } else if address == 0xFF40 {
-                    return self.registers.lcdc;
+                    return self.r.lcdc;
                 } else if address == 0xFF4A {
-                    return self.registers.wy;
+                    return self.r.wy;
                 } else if address == 0xFF4B {
-                    return self.registers.wx;
+                    return self.r.wx;
                 } else if address == 0xFF42 {
-                    return self.registers.scy;
+                    return self.r.scy;
                 } else if address == 0xFF43 {
-                    return self.registers.scx;
+                    return self.r.scx;
                 } else if address == 0xFF47 {
-                    return self.registers.bg_pal;
+                    return self.r.bg_pal;
                 } else if address == 0xFFFF {
-                    return self.registers.ie;
+                    return self.r.ie;
                 } else if address == 0xFF0F {
-                    return self.registers.r#if;
+                    return self.r.r#if;
                 } else if address == 0xFF45 {
-                    return self.registers.lyc;
+                    return self.r.lyc;
                 } else if address == 0xFF41 {
-                    return self.registers.stat;
+                    return self.r.stat;
                 } else if address == 0xFF00 {
-                    return self.registers.joypad;
+                    return self.r.joypad;
                 }
             }
             return self.memory.main[address as usize];
@@ -76,37 +76,37 @@ impl GameBoy {
                 {
                     return;
                 } else if address == 0xFF05 {
-                    self.registers.tima = data
+                    self.r.tima = data
                 } else if address == 0xFF06 {
-                    self.registers.tma = data;
+                    self.r.tma = data;
                 } else if address == 0xFF07 {
-                    self.registers.tac = data;
+                    self.r.tac = data;
                 } else if address == 0xFF04 {
-                    self.registers.div = 0;
+                    self.r.div = 0;
                 } else if address == 0xFF44 {
-                    self.registers.ly = data;
+                    self.r.ly = data;
                 } else if address == 0xFF40 {
-                    self.registers.lcdc = data;
+                    self.r.lcdc = data;
                 } else if address == 0xFF4A {
-                    self.registers.wy = data;
+                    self.r.wy = data;
                 } else if address == 0xFF4B {
-                    self.registers.wx = data;
+                    self.r.wx = data;
                 } else if address == 0xFF42 {
-                    self.registers.scy = data;
+                    self.r.scy = data;
                 } else if address == 0xFF43 {
-                    self.registers.scx = data;
+                    self.r.scx = data;
                 } else if address == 0xFF47 {
-                    self.registers.bg_pal = data;
+                    self.r.bg_pal = data;
                 } else if address == 0xFFFF {
-                    self.registers.ie = data;
+                    self.r.ie = data;
                 } else if address == 0xFF0F {
-                    self.registers.r#if = data;
+                    self.r.r#if = data;
                 } else if address == 0xFF45 {
-                    self.registers.lyc = data;
+                    self.r.lyc = data;
                 } else if address == 0xFF41 {
-                    self.registers.stat = data;
+                    self.r.stat = data;
                 } else if address == 0xFF00 {
-                    self.registers.joypad = data & 0xF0;
+                    self.r.joypad = data & 0xF0;
                 }
             }
             self.memory.main[address as usize] = data

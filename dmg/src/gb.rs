@@ -1,8 +1,8 @@
-// refactoring TODOs
-// restructure gb struct to be less disorganised
+// TODOs
+// add state transition functions to ensure that certain classes of bugs are avoided
+// for instance cycles_to_idle must always be 0 if we want to restart in the Execute state.
 
-use crate::isr::{self, Isr};
-use crate::log;
+use crate::{log, util};
 use crate::memory::{self, MappedRAM, MappingType};
 pub struct Registers {
     pub a: u8,
@@ -32,26 +32,69 @@ pub struct Registers {
     pub stat: u8,
     pub joypad: u8,
 }
+#[derive(Copy, Clone, Debug)]
+pub struct Sprite {
+    pub size_y: u8,
+    pub x: i16,
+    pub y: i16,
+    pub x_flip: u8,
+    pub y_flip: u8,
+    pub pal: u8,
+    pub priority: u8,
+    pub tile_num: u8,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum State {
+    Execute,
+    Halted,
+    Stopped, // yes these are distinct!
+    InterruptHandler,
+}
+
+#[derive(PartialEq)]
+pub enum IsrState {
+    Wait1,
+    Wait2,
+    PCPush1,
+    PCPush2,
+    Jump,
+}
+
+pub enum InterruptType {
+    VBlank = 0,
+    LCD = 1,
+    Timer = 2,
+    Serial = 3,
+    Joypad = 4,
+}
+
+pub struct Timer {
+    clock_period: u8,
+
+}
 
 pub struct GameBoy {
     pub clock: u128, // m-cycles
-    pub running: bool,
-    pub registers: Registers,
+    pub r: Registers,
     pub cycles_to_idle: Option<u8>,
     pub memory: memory::MappedRAM,
     pub ime: bool,
     pub ime_dispatch: Option<u8>,
     pub displaybuf_0: [u8; 160 * 144],
-    pub displaybuf_1: [u8; 160 * 144], // TODO remove copy by swapping buffers.
+    pub displaybuf_1: [u8; 160 * 144],
     pub backbuf_id: u8,
     pub logger: log::Logger,
-    pub isr: Isr,
-    pub(crate) window_line_counter: u8,
+    pub isr_state: IsrState,
     pub test_mode: bool,
     keys_ssba: u8,
     keys_dulr: u8,
-    tima_period: u16,
-    tma_old: u8,
+    pub(crate) oam_base: u16,
+    pub sprites: [Sprite; 10],
+    pub num_sprites: usize,
+    pub background: [u8; 160 * 144],
+    pub state: State,
+    pub timer: Timer,
 }
 
 pub fn init() -> GameBoy {
@@ -91,20 +134,13 @@ pub fn init() -> GameBoy {
     };
 
     let logger = log::Logger {
-        level: log::LogLevel::Info,
-    };
-
-    let isr = Isr {
-        state: isr::State::None,
-        iflag: 0,
-        ienable: 0,
-        ir_addr: 0,
+        level: log::LogLevel::Disassembly,
     };
 
     GameBoy {
         clock: 0,
-        running: true,
-        registers: registers,
+        state: State::Execute,
+        r: registers,
         cycles_to_idle: Some(0),
         memory: memory,
         ime: false,
@@ -113,97 +149,169 @@ pub fn init() -> GameBoy {
         displaybuf_1: [0; 160 * 144],
         backbuf_id: 0,
         logger: logger,
-        isr: isr,
-        window_line_counter: 0,
+        isr_state: IsrState::Wait1,
         test_mode: false,
         keys_ssba: 0xF,
         keys_dulr: 0xF,
-        tima_period: 256, 
-        tma_old: 0,
+        oam_base: 0,
+        sprites: [Sprite{
+            size_y: 0,
+            x: 0,
+            y: 0,
+            x_flip: 0,
+            y_flip: 0,
+            pal: 0,
+            priority: 0,
+            tile_num: 0,
+        }; 10],
+        num_sprites: 0,
+        background: [0; 160*144],
+        timer: Timer { clock_period: 255 },
     }
 }
 
 impl GameBoy {
     pub fn tick(&mut self) {
-        // This should be called once every M-cycle.
-        // Current behaviour is M-cycle faking, i.e. all work is done in first M-cycle
-        // CPU & RAM idle for the rest of the instruction's M-cycles
-        if self.running {
-            self.update_ime(false);
-            self.tma_old = self.registers.tma;
 
-            if self.test_mode == false {
-                self.trigger_interrupts();
 
-                if self.isr.state != isr::State::None {
-                    self.handle_interrupt();
-                    return;
-                } else if self.ime && ((self.registers.ie & self.registers.r#if) != 0) {
-                    self.isr.state = isr::State::ReadIF;
+        self.update_ime(false);
+
+        let wake_up = (self.r.r#if & self.r.ie) != 0;
+        let interrupt_requested = self.ime && wake_up;
+
+        if interrupt_requested {
+            self.state = State::InterruptHandler;
+        }
+
+        if self.state == State::InterruptHandler {
+            self.handle_interrupts();
+            return;
+        }
+
+        self.update_timers();
+
+        if self.state == State::Halted && wake_up {
+            println!("Unhalting");
+            self.state = State::Execute;
+            self.cycles_to_idle = Some(0);
+        }
+
+        if self.state == State::Execute {    
+            self.execute();
+        }
+
+        self.update_ime(true);
+
+        let lcd_enable = (self.r.lcdc >> 7) & 1 != 0;
+
+        if !self.test_mode && lcd_enable {
+            self.renderer();
+        };
+
+        self.clock += 1;
+    }
+
+    fn update_timers(&mut self) {
+        if self.state != State::Stopped {
+            if self.clock % 64 == 0 {
+                self.r.div += 1; // for tetris purposes may be better to set to pseudorandom number
+            }
+        } else {
+            self.r.div = 0;
+        }
+        let tima_increment_enable = (self.r.tac >> 2) & 1 != 0; 
+        if tima_increment_enable {
+            let clock_select = self.r.tac & 3;
+            
+            self.timer.clock_period = match clock_select {
+                0 => 255,
+                1 => 3,
+                2 => 15,
+                3 => 63,
+                _ => panic!("Clock select has illegal value"),
+            };
+
+            if self.clock % self.timer.clock_period as u128 == 0 {
+                let test_overflow = self.r.tima as u16 + 1;
+                if test_overflow > 0xFF {
+                    self.logger.log_info("TMA overflow");
+                    self.r.tima = self.r.tma;
+                    self.request_interrupt(InterruptType::Timer);
+                    println!("if&ie: {:#b}, state: {:?}", self.r.ie & self.r.r#if, self.state);
+                } else {
+                    self.r.tima += 1;
                 }
             }
+        }
+    }
 
-            if let Some(cycles_to_idle) = self.cycles_to_idle {
+    fn execute(&mut self) {
+        if let Some(cycles_to_idle) = self.cycles_to_idle {
                 if cycles_to_idle == 0 {
-                    let opcode: u8 = self.read(self.registers.pc);
-                    self.registers.pc += 1;
+                    let opcode: u8 = self.read(self.r.pc);
+                    self.r.pc += 1;
                     self.cycles_to_idle = self.fetch_decode_execute(opcode);
                 } else {
                     self.cycles_to_idle = Some(self.cycles_to_idle.unwrap() - 1);
                 }
-            }
-
-            self.update_ime(true);
-
-            if self.test_mode == false {
-                self.renderer();
-
-                let buttons = (self.registers.joypad >> 5) == 0;
-                let dpad = (self.registers.joypad >> 4) == 0;
-                let lower_nibble: u8;
-                if !buttons && !dpad {
-                    lower_nibble = 0xF;
-                } else if buttons && dpad {
-                    lower_nibble = self.keys_ssba | self.keys_dulr;
-                } else if buttons {
-                    lower_nibble = self.keys_ssba;
-                } else {
-                    lower_nibble = self.keys_dulr;
-                }
-                let old_jp = self.registers.joypad;
-                self.registers.joypad = (old_jp & 0xF0) | lower_nibble;
-                if self.registers.joypad & 0x0F != old_jp & 0x0F {
-                    self.registers.r#if |= 1 << 4;
-                }
-
-                self.update_timers();
-            };
-
-            self.clock += 1;
         }
     }
 
-    pub fn update_timers(&mut self) {
-        if self.clock % 64 == 0 {
-            self.registers.div += 1;
-        }
-        if (self.registers.tac >> 2) & 1 == 1 {
-            self.tima_period = match self.registers.tac & 0x3 {
-                0 => 256,
-                1 => 4,
-                2 => 16,
-                3 => 64,
-                _ => panic!("Should be mathematically impossible"),
+    fn handle_interrupts(&mut self) {
+        match self.isr_state {
+            IsrState::Wait1 => {
+                self.logger.log_info("ISR Wait1");
+                self.isr_state = IsrState::Wait2
+            },
+            IsrState::Wait2 => {
+                self.logger.log_info("ISR Wait2");
+                self.isr_state = IsrState::PCPush1
+            }
+            IsrState::PCPush1 => {
+                self.logger.log_info("ISR PCPush1");
+                self.r.sp -= 1;
+                self.write(self.r.sp, util::msb(self.r.pc));
+                self.isr_state = IsrState::PCPush2
+            }
+            IsrState::PCPush2 => {
+                self.logger.log_info("ISR PCPush2");
+                self.r.sp -= 1;
+                self.write(self.r.sp, util::lsb(self.r.pc));
+                self.isr_state = IsrState::Jump;
+            }
+            IsrState::Jump => {
+                self.logger.log_info("ISR Jump");
+                let mut interrupt_index = None;
+                for i in 0..5 {
+                    if (((self.r.ie & self.r.r#if) >> i) & 1) != 0 {
+                        interrupt_index = Some(i);
+                    }
+                }
+                
+                if let Some(i) = interrupt_index {
+                    self.ime = false;
+                    self.r.pc = [0x40, 0x48, 0x50, 0x58, 0x60][i];
+                    println!("Jumping to {:#x}", self.r.pc);
+                    self.cancel_interrupt_by_index(i as u8);
+                } 
+
+                self.isr_state = IsrState::Wait1;
+                self.state = State::Execute;
+                self.cycles_to_idle = Some(0);
             }
         }
-        if (self.clock % self.tima_period as u128) == 0 {
-            if (self.registers.tima as u16 + 1) > 0xFF {
-                self.registers.tima = self.tma_old;
-                self.registers.r#if |= 0x4;
-            } else {
-                self.registers.tima += 1;
-            }
-        }
+    }
+
+    pub fn request_interrupt(&mut self, interrupt_type: InterruptType) {
+        self.r.r#if |= 1 << interrupt_type as u8;
+    }
+
+    pub fn cancel_interrupt(&mut self, interrupt_type: InterruptType) {
+        self.r.r#if &= !(1 << interrupt_type as u8); 
+    }
+
+    pub fn cancel_interrupt_by_index(&mut self, interrupt_index: u8) {
+        self.r.r#if &= !(1 << interrupt_index); 
     }
 
     pub fn press_key(&mut self, mut key_id: u8) {
