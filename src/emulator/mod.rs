@@ -16,7 +16,7 @@ impl ScgbGui {
             Key::S,
         ];
         for j in 0..keymap.len() {
-            if ctx.input(|i| i.key_pressed(keymap[j])) {
+            if ctx.input(|i| i.key_down(keymap[j])) {
                 self.gameboy.press_key(j as u8);
                 self.gameboy.logger.log_info(&format!("key {} pressed", j));
             } else if ctx.input(|i| i.key_released(keymap[j])) {

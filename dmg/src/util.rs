@@ -198,6 +198,6 @@ impl GameBoy {
     }
 
     pub fn oam(&self, offset: u8) -> u8 {
-        self.read(self.oam_base + offset as u16)
+        self.memory.main[self.oam_base as usize + offset as usize]
     }
 }

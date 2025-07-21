@@ -50,6 +50,7 @@ pub enum State {
     Halted,
     Stopped, // yes these are distinct!
     InterruptHandler,
+    DmaTransfer,
 }
 
 #[derive(PartialEq)]
@@ -95,6 +96,8 @@ pub struct GameBoy {
     pub background: [u8; 160 * 144],
     pub state: State,
     pub timer: Timer,
+    pub dma_transfer_bytes_copied: u8,
+    pub(crate) dma_base: usize,
 }
 
 pub fn init() -> GameBoy {
@@ -167,6 +170,8 @@ pub fn init() -> GameBoy {
         num_sprites: 0,
         background: [0; 160*144],
         timer: Timer { clock_period: 255 },
+        dma_transfer_bytes_copied: 0,
+        dma_base: 0,
     }
 }
 
@@ -195,9 +200,21 @@ impl GameBoy {
             self.cycles_to_idle = Some(0);
         }
 
-        if self.state == State::Execute {    
+        if self.state == State::Execute || self.state == State::DmaTransfer {    
             self.execute();
         }
+
+        // if self.state == State::DmaTransfer { // TODO allow CPU execution but stop reads/writes to  external memory during DMA transfer. I dont think many games rely on this
+        //     if self.dma_transfer_bytes_copied < 160 {
+        //         self.memory.main[self.oam_base as usize + self.dma_transfer_bytes_copied as usize] = self.memory.main[self.dma_base as usize + self.dma_transfer_bytes_copied as usize];
+        //         self.dma_transfer_bytes_copied += 1;
+        //     } else if self.dma_transfer_bytes_copied == 160 {
+        //         self.state = State::Execute;
+        //         println!("Done DMA transfer")
+        //     } else {
+        //         panic!("Maybe copied more than 160 bytes in dma transfer. This is a bug!!")
+        //     }
+        // }
 
         self.update_ime(true);
 
