@@ -2,6 +2,7 @@
 #[cfg(test)]
 mod single_step_test {
     use crate::gb;
+    use crate::gb::State;
     use crate::memory::{MappingType};
     use std::{fs, path::Path, path::PathBuf};
 
@@ -48,7 +49,7 @@ mod single_step_test {
         gameboy.r.l = test.initial.l;
         gameboy.r.sp = test.initial.sp;
         gameboy.r.pc = test.initial.pc;
-        gameboy.halted = true;
+        gameboy.state = State::Execute;
         gameboy.cycles_to_idle = Some(0);
 
         // Write to RAM

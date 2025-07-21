@@ -57,7 +57,11 @@ impl GameBoy {
                 } else if address == 0xFF41 {
                     return self.r.stat;
                 } else if address == 0xFF00 {
-                    return self.r.joypad;
+                    let not_select_buttons = if (self.r.joypad >> 5) & 1 == 0 {0} else {0xFF};
+                    let not_select_dpad = if (self.r.joypad >> 4) & 1 == 0 {0} else {0xFF};
+                    let lower_nibble = ((not_select_buttons & self.keys_dulr) | (not_select_dpad & self.keys_ssba)) & 0x0F;
+                    println!("JP: {:#b}", (self.r.joypad & 0xF0) | lower_nibble );
+                    return (self.r.joypad & 0xF0) | lower_nibble;
                 }
             }
             return self.memory.main[address as usize];

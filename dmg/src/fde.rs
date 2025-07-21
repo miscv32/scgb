@@ -301,6 +301,7 @@ impl GameBoy {
                 self.logger.log_disassembly("LDH (u8), A");
                 let n = self.read(self.r.pc);
                 self.r.pc += 1;
+                if n == 0x50 {println!("BOOTROM EXIT")};
                 self.write(unsigned_16(0xFF, n), self.r.a);
                 Some(3)
             }
@@ -585,7 +586,8 @@ impl GameBoy {
                     // LD r8, u8
                     self.logger.log_disassembly("LD r8, u8");
                     let r8 = opcode >> 3;
-                    self.set_r8(r8, self.read(self.r.pc));
+                    let pc = self.read(self.r.pc);
+                    self.set_r8(r8, pc);
                     self.r.pc += 1;
                     return Some(3);
                 } else if (opcode & 0b11_000_111) == 0b00_000_100 {

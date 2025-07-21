@@ -87,8 +87,8 @@ pub struct GameBoy {
     pub logger: log::Logger,
     pub isr_state: IsrState,
     pub test_mode: bool,
-    keys_ssba: u8,
-    keys_dulr: u8,
+    pub(crate) keys_ssba: u8,
+    pub(crate) keys_dulr: u8,
     pub(crate) oam_base: u16,
     pub sprites: [Sprite; 10],
     pub num_sprites: usize,
@@ -134,7 +134,7 @@ pub fn init() -> GameBoy {
     };
 
     let logger = log::Logger {
-        level: log::LogLevel::Disassembly,
+        level: log::LogLevel::None,
     };
 
     GameBoy {
@@ -191,7 +191,6 @@ impl GameBoy {
         self.update_timers();
 
         if self.state == State::Halted && wake_up {
-            println!("Unhalting");
             self.state = State::Execute;
             self.cycles_to_idle = Some(0);
         }
@@ -237,7 +236,6 @@ impl GameBoy {
                     self.logger.log_info("TMA overflow");
                     self.r.tima = self.r.tma;
                     self.request_interrupt(InterruptType::Timer);
-                    println!("if&ie: {:#b}, state: {:?}", self.r.ie & self.r.r#if, self.state);
                 } else {
                     self.r.tima += 1;
                 }
@@ -291,7 +289,6 @@ impl GameBoy {
                 if let Some(i) = interrupt_index {
                     self.ime = false;
                     self.r.pc = [0x40, 0x48, 0x50, 0x58, 0x60][i];
-                    println!("Jumping to {:#x}", self.r.pc);
                     self.cancel_interrupt_by_index(i as u8);
                 } 
 
@@ -303,7 +300,7 @@ impl GameBoy {
     }
 
     pub fn request_interrupt(&mut self, interrupt_type: InterruptType) {
-        self.r.r#if |= 1 << interrupt_type as u8;
+        self.r.r#if |= 1 << (interrupt_type as u8);
     }
 
     pub fn cancel_interrupt(&mut self, interrupt_type: InterruptType) {
@@ -321,7 +318,7 @@ impl GameBoy {
             keys = &mut self.keys_dulr;
             key_id -= 4;
         };
-        *keys &= !1 << key_id;
+        *keys &= !(1 << key_id);
     }
 
     pub fn unpress_key(&mut self, mut key_id: u8) {
