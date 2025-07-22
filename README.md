@@ -2,12 +2,20 @@
 
 current progress: 
 
-tetris opening screen and demo - mostly working
-![image](https://github.com/user-attachments/assets/54c1d338-5806-40bb-b80d-c5102d43d686)
-![image](https://github.com/user-attachments/assets/7087e9ca-2518-4ce8-9824-2b1bd04bc515)
+tetris: playable in 1-player mode
+<img width="991" height="915" alt="image" src="https://github.com/user-attachments/assets/e69042ab-992a-4360-97e5-2ba6bfe1a116" />
 
-dmg-acid2 - broken
-![image](https://github.com/user-attachments/assets/82e4f23a-a5f7-47b9-865f-ec98c058e367)
+dmg-acid2 - broken in new and interesting ways
+<img width="1162" height="1050" alt="image" src="https://github.com/user-attachments/assets/619fc924-7a19-4d3a-9852-8e07aa7018e3" />
+known issues:
+- incorrect x/y flip
+- in-sprite x-coord = lcdx - spritex, not lcdx mod 8
+- no transparency
+- no BG disable
+- no 16-pixel sprites
+- no window
+- no obj disable
+- no tile data option select
 
 boot ROM - working
 ![image](https://github.com/user-attachments/assets/65481835-3ee6-4097-9197-789a2bcc1f0e)
