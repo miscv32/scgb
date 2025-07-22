@@ -101,7 +101,7 @@ impl GameBoy {
             let sprite = Sprite {
                 size_y: if ((self.r.lcdc >> 2) & 1) != 0 {16} else {8},
                 x: self.oam(1) as i16 - 8,
-                y: self.oam(0) as i16 - 16,
+                y: self.oam(0) as i16,
                 x_flip: (self.oam(3) >> 5) & 1,
                 y_flip: (self.oam(3) >> 6) & 1,
                 pal: (self.oam(3) >> 4) & 1,
@@ -120,7 +120,7 @@ impl GameBoy {
         let mut tile_x = (sprite.x % 8) as u16;
         if sprite.x_flip != 0 {tile_x = 7 - tile_x}
 
-        let mut tile_y = ((self.r.ly as i16 - sprite.y) % 8) as u16;
+        let mut tile_y = ((self.r.ly as i16 + sprite.y) % 8) as u16;
         if sprite.y_flip != 0 {tile_y = 7 - tile_y}
 
         let tile_num = sprite.tile_num;
@@ -134,10 +134,10 @@ impl GameBoy {
 
             let data_low = (self.read(tile_addr) >> shift) & 1;
             let data_high = (self.read(tile_addr + 1) >> shift) & 1;
-            let ly = self.r.ly;
+            let index = (self.r.ly) as usize * 160 + x as usize;
             let should_draw = true; // TODO add some semi-accurate condition here
             if should_draw {
-                self.backbuf()[ly as usize * 160 + x as usize] =
+                self.backbuf()[index] =
                     self.map_sprite_palette(sprite.pal, data_low | (data_high << 1));
             }
         }
