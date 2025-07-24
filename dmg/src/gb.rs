@@ -98,6 +98,8 @@ pub struct GameBoy {
     pub timer: Timer,
     pub dma_transfer_bytes_copied: u8,
     pub(crate) dma_base: usize,
+    pub(crate) lcdc_save: u8,
+    pub(crate) window_line_counter: u8,
 }
 
 pub fn init() -> GameBoy {
@@ -172,14 +174,19 @@ pub fn init() -> GameBoy {
         timer: Timer { clock_period: 255 },
         dma_transfer_bytes_copied: 0,
         dma_base: 0,
+        lcdc_save: 0,
+        window_line_counter: 0,
     }
 }
 
 impl GameBoy {
     pub fn tick(&mut self) {
 
+        self.check_lyc_equal_ly();
 
         self.update_ime(false);
+
+        self.trigger_misc_interrupts();
 
         let wake_up = (self.r.r#if & self.r.ie) != 0;
         let interrupt_requested = self.ime && wake_up;
@@ -225,6 +232,27 @@ impl GameBoy {
         };
 
         self.clock += 1;
+    }
+
+    pub fn check_lyc_equal_ly(&mut self) {
+        if self.r.ly == self.r.lyc {
+            self.r.stat |= 1 << 2;
+        }
+    }
+
+    fn trigger_misc_interrupts(&mut self) {
+        if (self.r.stat >> 6) & (self.r.stat >> 2) & 1 != 0 {
+            self.request_interrupt(InterruptType::LCD);
+        }
+        if (((self.r.stat >> 5) & 1) != 0) && ((self.r.stat & 3) == 2) {
+            self.request_interrupt(InterruptType::LCD);
+        }
+        if (((self.r.stat >> 4) & 1) != 0) && ((self.r.stat & 3) == 1) {
+            self.request_interrupt(InterruptType::LCD);
+        }
+        if (((self.r.stat >> 3) & 1) != 0) && ((self.r.stat & 3) == 0) {
+            self.request_interrupt(InterruptType::LCD);
+        }
     }
 
     fn update_timers(&mut self) {
