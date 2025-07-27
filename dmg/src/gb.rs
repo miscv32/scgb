@@ -18,7 +18,7 @@ pub struct Registers {
     pub tima: u8,
     pub tma: u8,
     pub tac: u8,
-    pub div: u8,
+    pub div_16: u16,
     pub ly: u8,
     pub lcdc: u8,
     pub wy: u8,
@@ -71,7 +71,8 @@ pub enum InterruptType {
 }
 
 pub struct Timer {
-    clock_period: u8,
+    prev_and_result: u8,
+    pub(crate) wait_reload: i32,
 
 }
 
@@ -117,7 +118,7 @@ pub fn init() -> GameBoy {
         tima: 0,
         tma: 0,
         tac: 0,
-        div: 0,
+        div_16: 0,
         ly: 0,
         lcdc: 0,
         wy: 0,
@@ -171,7 +172,7 @@ pub fn init() -> GameBoy {
         }; 10],
         num_sprites: 0,
         background: [0; 160*144],
-        timer: Timer { clock_period: 255 },
+        timer: Timer {prev_and_result: 0, wait_reload: 0 },
         dma_transfer_bytes_copied: 0,
         dma_base: 0,
         lcdc_save: 0,
@@ -181,8 +182,6 @@ pub fn init() -> GameBoy {
 
 impl GameBoy {
     pub fn tick(&mut self) {
-
-        self.check_lyc_equal_ly();
 
         self.update_ime(false);
 
@@ -200,7 +199,9 @@ impl GameBoy {
             return;
         }
 
-        self.update_timers();
+        for _ in 0..4 {
+            self.update_timers();
+        }
 
         if self.state == State::Halted && wake_up {
             self.state = State::Execute;
@@ -234,58 +235,68 @@ impl GameBoy {
         self.clock += 1;
     }
 
-    pub fn check_lyc_equal_ly(&mut self) {
+    pub fn check_and_trigger_ly_coincidence(&mut self) {
+        let stat_old = self.r.stat;
         if self.r.ly == self.r.lyc {
             self.r.stat |= 1 << 2;
+        }
+        if (self.r.stat >> 6) & (self.r.stat >> 2) & 1 != 0 && (stat_old >> 2) & 1 == 0{
+            self.request_interrupt(InterruptType::LCD);
         }
     }
 
     fn trigger_misc_interrupts(&mut self) {
-        if (self.r.stat >> 6) & (self.r.stat >> 2) & 1 != 0 {
-            self.request_interrupt(InterruptType::LCD);
-        }
-        if (((self.r.stat >> 5) & 1) != 0) && ((self.r.stat & 3) == 2) {
-            self.request_interrupt(InterruptType::LCD);
-        }
-        if (((self.r.stat >> 4) & 1) != 0) && ((self.r.stat & 3) == 1) {
-            self.request_interrupt(InterruptType::LCD);
-        }
-        if (((self.r.stat >> 3) & 1) != 0) && ((self.r.stat & 3) == 0) {
-            self.request_interrupt(InterruptType::LCD);
-        }
+        self.check_and_trigger_ly_coincidence();
+        // TODO move ethese to renderer
+        // if (((self.r.stat >> 5) & 1) != 0) && ((self.r.stat & 3) == 2) &&  ((old_stat & 3) != 2) {
+        //     self.request_interrupt(InterruptType::LCD);
+        // }
+        // if (((self.r.stat >> 4) & 1) != 0) && ((self.r.stat & 3) == 1) && ((old_stat & 3) != 1) {
+        //     self.request_interrupt(InterruptType::LCD);
+        // }
+        // if (((self.r.stat >> 3) & 1) != 0) && ((self.r.stat & 3) == 0) && ((old_stat & 3) != 0){
+        //     self.request_interrupt(InterruptType::LCD);
+        // }
     }
 
     fn update_timers(&mut self) {
-        if self.state != State::Stopped {
-            if self.clock % 64 == 0 {
-                self.r.div += 1; // for tetris purposes may be better to set to pseudorandom number
-            }
-        } else {
-            self.r.div = 0;
-        }
-        let tima_increment_enable = (self.r.tac >> 2) & 1 != 0; 
-        if tima_increment_enable {
-            let clock_select = self.r.tac & 3;
-            
-            self.timer.clock_period = match clock_select {
-                0 => 255,
-                1 => 3,
-                2 => 15,
-                3 => 63,
-                _ => panic!("Clock select has illegal value"),
-            };
+        self.r.div_16 += 1;
 
-            if self.clock % self.timer.clock_period as u128 == 0 {
-                let test_overflow = self.r.tima as u16 + 1;
-                if test_overflow > 0xFF {
-                    self.logger.log_info("TMA overflow");
-                    self.r.tima = self.r.tma;
-                    self.request_interrupt(InterruptType::Timer);
-                } else {
-                    self.r.tima += 1;
-                }
-            }
+        if self.timer.wait_reload > 0 && self.timer.wait_reload < 4 {
+            self.timer.wait_reload += 1;
+            return;
+        } else if self.timer.wait_reload == 4 {
+            self.r.tima = self.r.tma;
+            self.timer.wait_reload = 0;
+            self.request_interrupt(InterruptType::Timer);
+            return;
         }
+
+        let bit_position = match self.r.tac & 3 {
+            0 => 9,
+            1 => 3,
+            2 => 5,
+            3 => 7,
+            _ => unreachable!(),
+        };
+
+        let bit = (self.r.div_16 >> bit_position) as u8 & 1;
+        let timer_enable = (self.r.tac >> 2) & 1;
+        let and_result = bit & timer_enable;
+
+        if self.timer.prev_and_result == 1 && and_result == 0 {
+            let overflow_check = self.r.tima as u16 + 1;
+            if overflow_check > 0xFF {
+                self.r.tima = 0;
+                self.timer.wait_reload = 1;
+            }
+            else {
+                self.r.tima = overflow_check as u8;
+            } 
+        }
+
+        self.timer.prev_and_result = and_result;
+
     }
 
     fn execute(&mut self) {
@@ -301,6 +312,7 @@ impl GameBoy {
     }
 
     fn handle_interrupts(&mut self) {
+        self.clock += 1;
         match self.isr_state {
             IsrState::Wait1 => {
                 self.logger.log_info("ISR Wait1");
@@ -334,6 +346,9 @@ impl GameBoy {
                 if let Some(i) = interrupt_index {
                     self.ime = false;
                     self.r.pc = [0x40, 0x48, 0x50, 0x58, 0x60][i];
+                    if i == 1 {
+                        println!("STAT INTERRUPT TRIGGERED!");
+                    }
                     self.cancel_interrupt_by_index(i as u8);
                 } 
 

@@ -1,4 +1,4 @@
-use crate::gb::{GameBoy, State};
+use crate::gb::{GameBoy};
 
 pub const GB_RAM_SIZE: usize = 0x10000;
 pub const GB_ROM_SIZE: usize = 0x100;
@@ -33,7 +33,7 @@ impl GameBoy {
                 } else if address == 0xFF07 {
                     return self.r.tac;
                 } else if address == 0xFF04 {
-                    return self.r.div;
+                    return (self.r.div_16 >> 8) as u8;
                 } else if address == 0xFF44 {
                     return self.r.ly;
                 } else if address == 0xFF40 {
@@ -80,15 +80,17 @@ impl GameBoy {
                 {
                     return;
                 } else if address == 0xFF05 {
+                    self.timer.wait_reload = 0;
                     self.r.tima = data
                 } else if address == 0xFF06 {
                     self.r.tma = data;
                 } else if address == 0xFF07 {
                     self.r.tac = data;
                 } else if address == 0xFF04 {
-                    self.r.div = 0;
+                    self.r.div_16 = 0;
                 } else if address == 0xFF44 {
                     self.r.ly = data;
+                    self.check_and_trigger_ly_coincidence();
                 } else if address == 0xFF40 {
                     self.r.lcdc = data;
                 } else if address == 0xFF4A {
@@ -107,6 +109,7 @@ impl GameBoy {
                     self.r.r#if = data;
                 } else if address == 0xFF45 {
                     self.r.lyc = data;
+                    self.check_and_trigger_ly_coincidence();
                 } else if address == 0xFF41 {
                     self.r.stat = data;
                 } else if address == 0xFF00 {

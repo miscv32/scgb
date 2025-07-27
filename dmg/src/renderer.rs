@@ -9,22 +9,25 @@ enum LCDStatus {
 
 impl GameBoy {
     pub fn renderer(&mut self) {
+        let old_stat  = self.r.stat;
         if self.clock % 114 == 0 && self.r.ly == 144 {
             self.update_stat(LCDStatus::PPUModeVBlank);
             self.request_interrupt(InterruptType::VBlank);
             self.backbuf_id += 1;
             self.backbuf_id %= 2;
             self.r.ly = 0;
+            self.check_and_trigger_ly_coincidence();
             self.window_line_counter = 0;
         } else if self.clock % 114 == 0 && self.r.ly < 144{
             self.update_stat(LCDStatus::PPUModeOAMScan);
-        }else if self.clock % 114 == 19 { 
-            //self.check_lyc_equal_ly(); 
-        }else if self.clock % 114 == 20 && self.r.ly < 144 {
+        } else if self.clock % 114 == 20 && self.r.ly < 144 {
 
             self.render_scanline();
             
             self.r.ly += 1;
+
+            self.check_and_trigger_ly_coincidence(); // this is the culprit!
+
             self.update_stat(LCDStatus::PPUModeDrawing)
         } else if self.clock % 114 == 63 {
             self.update_stat(LCDStatus::PPUModeHBlank);
@@ -33,6 +36,16 @@ impl GameBoy {
             // self.backbuf_id %= 2;
             // self.r.ly = 0;
             // self.window_line_counter = 0;
+        }
+        // check if theres any interrupts we need to trigger based on state changes
+        if (((self.r.stat >> 5) & 1) != 0) && ((self.r.stat & 3) == 2) && ((old_stat & 3) != 2) {
+            self.request_interrupt(InterruptType::LCD);
+        }
+        if (((self.r.stat >> 4) & 1) != 0) && ((self.r.stat & 3) == 1) && ((old_stat & 3) != 1) {
+            self.request_interrupt(InterruptType::LCD);
+        }
+        if (((self.r.stat >> 3) & 1) != 0) && ((self.r.stat & 3) == 0) && ((old_stat & 3) != 0){
+            self.request_interrupt(InterruptType::LCD);
         }
     }
 
@@ -195,11 +208,12 @@ impl GameBoy {
     }
 
     fn render_scanline(&mut self) {
-            // if ((self.r.lcdc >> 7) & 1) == 0 {
-            //     return;
-            // }
+            if ((self.r.lcdc >> 7) & 1) == 0 {
+                return;
+            }
             if self.r.lcdc & 1 != 0 {
                 self.render_background(); 
+                //self.render_window();
             }
 
             // println!("{:#b}", self.r.lcdc);
