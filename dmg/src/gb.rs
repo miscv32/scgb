@@ -185,7 +185,7 @@ impl GameBoy {
 
         self.update_ime(false);
 
-        self.trigger_misc_interrupts();
+        self.check_and_trigger_ly_coincidence();
 
         let wake_up = (self.r.r#if & self.r.ie) != 0;
         let interrupt_requested = self.ime && wake_up;
@@ -239,24 +239,13 @@ impl GameBoy {
         let stat_old = self.r.stat;
         if self.r.ly == self.r.lyc {
             self.r.stat |= 1 << 2;
+        } else {
+            self.r.stat &= (!1) << 2;
         }
         if (self.r.stat >> 6) & (self.r.stat >> 2) & 1 != 0 && (stat_old >> 2) & 1 == 0{
             self.request_interrupt(InterruptType::LCD);
-        }
-    }
 
-    fn trigger_misc_interrupts(&mut self) {
-        self.check_and_trigger_ly_coincidence();
-        // TODO move ethese to renderer
-        // if (((self.r.stat >> 5) & 1) != 0) && ((self.r.stat & 3) == 2) &&  ((old_stat & 3) != 2) {
-        //     self.request_interrupt(InterruptType::LCD);
-        // }
-        // if (((self.r.stat >> 4) & 1) != 0) && ((self.r.stat & 3) == 1) && ((old_stat & 3) != 1) {
-        //     self.request_interrupt(InterruptType::LCD);
-        // }
-        // if (((self.r.stat >> 3) & 1) != 0) && ((self.r.stat & 3) == 0) && ((old_stat & 3) != 0){
-        //     self.request_interrupt(InterruptType::LCD);
-        // }
+        }
     }
 
     fn update_timers(&mut self) {
@@ -346,9 +335,7 @@ impl GameBoy {
                 if let Some(i) = interrupt_index {
                     self.ime = false;
                     self.r.pc = [0x40, 0x48, 0x50, 0x58, 0x60][i];
-                    if i == 1 {
-                        println!("STAT INTERRUPT TRIGGERED!");
-                    }
+                    
                     self.cancel_interrupt_by_index(i as u8);
                 } 
 

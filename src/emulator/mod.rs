@@ -24,7 +24,7 @@ impl ScgbGui {
                 self.gameboy.logger.log_info(&format!("key {} released", j));
             }
         }
-        for _ in 0..(17556) {
+        for _ in 0..(17556)*10 {
             self.gameboy.tick();
         }
     }

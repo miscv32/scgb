@@ -1,4 +1,4 @@
-use crate::gb::{GameBoy, InterruptType, Sprite};
+use crate::gb::{GameBoy, InterruptType, Sprite, State};
 
 enum LCDStatus {
     PPUModeDrawing,
@@ -26,7 +26,7 @@ impl GameBoy {
             
             self.r.ly += 1;
 
-            self.check_and_trigger_ly_coincidence(); // this is the culprit!
+            self.check_and_trigger_ly_coincidence();
 
             self.update_stat(LCDStatus::PPUModeDrawing)
         } else if self.clock % 114 == 63 {
@@ -87,7 +87,6 @@ impl GameBoy {
             0 => 0x9800,
             _ => 0x9c00,
         };
-
         for x in 0..160 {
             let tile_x = (x + self.r.scx) % 8;
             let tile_y = (self.r.ly as u16 + self.r.scy as u16) % 8;
@@ -128,6 +127,7 @@ impl GameBoy {
             0 => 0x9800,
             _ => 0x9c00,
         };
+        
         for x in 0..160 {
             let x_plus_scroll = (x as u16) % 256;
             let y_plus_scroll = (self.window_line_counter as u16) % 256;
@@ -207,11 +207,11 @@ impl GameBoy {
     
     }
 
-    fn render_scanline(&mut self) {
+    fn render_scanline(&mut self) { 
             if ((self.r.lcdc >> 7) & 1) == 0 {
                 return;
             }
-            if self.r.lcdc & 1 != 0 {
+            if (self.r.lcdc & 1) != 0 {
                 self.render_background(); 
                 //self.render_window();
             }

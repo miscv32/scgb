@@ -1,0 +1,73 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'supercoolgb'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=supercoolgb"
+                ],
+                "filter": {
+                    "name": "supercoolgb",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUSTC_BOOTSTRAP": "1"
+            }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'supercoolgb'",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=supercoolgb",
+                    "--package=supercoolgb"
+                ],
+                "filter": {
+                    "name": "supercoolgb",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUSTC_BOOTSTRAP": "1"
+            }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'supercoolgb'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=supercoolgb",
+                    "--package=supercoolgb"
+                ],
+                "filter": {
+                    "name": "supercoolgb",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUSTC_BOOTSTRAP": "1"
+            }
+        }
+    ]
+}

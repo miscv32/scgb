@@ -18,3 +18,5 @@ test_roms/
 # dont commit logs
 logs*
 log.txt
+
+.vscode/
