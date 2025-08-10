@@ -1,6 +1,4 @@
-use crate::{
-    widgets::framebuf::FrameBufWidget,
-};
+use crate::widgets::framebuf::FrameBufWidget;
 use dmg::gb;
 use dmg::gb::GameBoy;
 use std::fs;
@@ -18,8 +16,10 @@ impl ScgbGui {
         let framebuf = FrameBufWidget::new(cc);
         let mut gameboy = gb::init();
 
-        let data: Vec<u8> = fs::read("C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\dmg_boot.bin")
-            .expect("couldnt read file");
+        let data: Vec<u8> = fs::read(
+            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\dmg_boot.bin",
+        )
+        .expect("couldnt read file");
         let rom: Vec<u8> = fs::read(
             "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\dmg-acid2.gb",
         )
@@ -31,10 +31,7 @@ impl ScgbGui {
             gameboy.write(i as u16, rom[i])
         }
 
-        Self {
-            framebuf,
-            gameboy,
-        }
+        Self { framebuf, gameboy }
     }
 }
 
@@ -76,7 +73,7 @@ impl eframe::App for ScgbGui {
                 self.framebuf.draw(ui, &self.gameboy);
             });
 
-            ctx.request_repaint(); // TODO make this run at exactly 59.7Hz 
+            ctx.request_repaint(); // TODO make this run at exactly 59.7Hz
         });
     }
 }

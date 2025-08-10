@@ -37,15 +37,12 @@ impl FrameBufWidget {
     }
 
     pub fn draw(&mut self, ui: &mut egui::Ui, gb: &GameBoy) -> egui::Response {
-        
         let frame = gb.display();
         self.display_size = [160, 144];
         self.texture.set(
             egui::ColorImage {
                 size: self.display_size.map(|i| i.into()),
-                pixels: Vec::from_iter(
-                    frame.iter().map(|c| util::dmg_colour(*c)),
-                ),
+                pixels: Vec::from_iter(frame.iter().map(|c| util::dmg_colour(*c))),
             },
             egui::TextureOptions::NEAREST,
         );

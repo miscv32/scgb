@@ -1,6 +1,6 @@
 use egui::Key;
 
-use crate::{ScgbGui};
+use crate::ScgbGui;
 
 impl ScgbGui {
     pub fn draw(&mut self, ctx: &egui::Context) {
@@ -24,7 +24,7 @@ impl ScgbGui {
                 self.gameboy.logger.log_info(&format!("key {} released", j));
             }
         }
-        for _ in 0..(17556)*10 {
+        for _ in 0..(17556) * 10 {
             self.gameboy.tick();
         }
     }

@@ -1,4 +1,4 @@
-use crate::{gb::GameBoy};
+use crate::gb::GameBoy;
 
 pub fn msb(two_bytes: u16) -> u8 {
     (two_bytes >> 8) as u8
@@ -188,7 +188,7 @@ impl GameBoy {
             _ => panic!("get_r16_group_2 recieved illegal value"),
         }
     }
-    
+
     pub fn map_background_palette(&self, data: u8) -> u8 {
         (self.r.bg_pal >> (data << 1)) & 0b11
     }

@@ -1,4 +1,4 @@
-use crate::gb::{GameBoy};
+use crate::gb::GameBoy;
 
 pub const GB_RAM_SIZE: usize = 0x10000;
 pub const GB_ROM_SIZE: usize = 0x100;
@@ -57,14 +57,24 @@ impl GameBoy {
                 } else if address == 0xFF41 {
                     return self.r.stat;
                 } else if address == 0xFF00 {
-                    let not_select_buttons = if (self.r.joypad >> 5) & 1 == 0 {0} else {0xFF};
-                    let not_select_dpad = if (self.r.joypad >> 4) & 1 == 0 {0} else {0xFF};
-                    let lower_nibble = ((not_select_buttons & self.keys_dulr) | (not_select_dpad & self.keys_ssba)) & 0x0F;
-                   
+                    let not_select_buttons = if (self.r.joypad >> 5) & 1 == 0 {
+                        0
+                    } else {
+                        0xFF
+                    };
+                    let not_select_dpad = if (self.r.joypad >> 4) & 1 == 0 {
+                        0
+                    } else {
+                        0xFF
+                    };
+                    let lower_nibble = ((not_select_buttons & self.keys_dulr)
+                        | (not_select_dpad & self.keys_ssba))
+                        & 0x0F;
+
                     return (self.r.joypad & 0xF0) | lower_nibble;
                 }
             }
-            return self.memory.main[address as usize];
+            self.memory.main[address as usize]
         }
     }
 
@@ -114,11 +124,11 @@ impl GameBoy {
                     self.r.stat = data;
                 } else if address == 0xFF00 {
                     self.r.joypad = data & 0xF0;
-                } else if address ==  0xFF46 {
+                } else if address == 0xFF46 {
                     // start doing DMA transfer
                     self.dma_base = ((data as u16) << 8) as usize;
                     for i in 0..160 {
-                        self.memory.main[0xFE00 + i] = self.read((self.dma_base+i) as u16)
+                        self.memory.main[0xFE00 + i] = self.read((self.dma_base + i) as u16)
                     }
                 }
             }

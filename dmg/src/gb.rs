@@ -2,8 +2,8 @@
 // add state transition functions to ensure that certain classes of bugs are avoided
 // for instance cycles_to_idle must always be 0 if we want to restart in the Execute state.
 
-use crate::{log, util};
 use crate::memory::{self, MappedRAM, MappingType};
+use crate::{log, util};
 pub struct Registers {
     pub a: u8,
     pub f: u8,
@@ -73,14 +73,13 @@ pub enum InterruptType {
 pub struct Timer {
     prev_and_result: u8,
     pub(crate) wait_reload: i32,
-
 }
 
 pub struct GameBoy {
     pub clock: u128, // m-cycles
     pub r: Registers,
     pub cycles_to_idle: Option<u8>,
-    pub memory: memory::MappedRAM,
+    pub memory: MappedRAM,
     pub ime: bool,
     pub ime_dispatch: Option<u8>,
     pub displaybuf_0: [u8; 160 * 144],
@@ -100,7 +99,6 @@ pub struct GameBoy {
     pub timer: Timer,
     pub dma_transfer_bytes_copied: u8,
     pub(crate) dma_base: usize,
-    pub(crate) lcdc_save: u8,
     pub(crate) window_line_counter: u8,
 }
 
@@ -161,7 +159,7 @@ pub fn init() -> GameBoy {
         keys_ssba: 0xF,
         keys_dulr: 0xF,
         oam_base: 0,
-        sprites: [Sprite{
+        sprites: [Sprite {
             size_y: 0,
             x: 0,
             y: 0,
@@ -172,19 +170,20 @@ pub fn init() -> GameBoy {
             tile_num: 0,
         }; 10],
         num_sprites: 0,
-        background: [0; 256*256],
-        window: [0; 256*256],
-        timer: Timer {prev_and_result: 0, wait_reload: 0 },
+        background: [0; 256 * 256],
+        window: [0; 256 * 256],
+        timer: Timer {
+            prev_and_result: 0,
+            wait_reload: 0,
+        },
         dma_transfer_bytes_copied: 0,
         dma_base: 0,
-        lcdc_save: 0,
         window_line_counter: 0,
     }
 }
 
 impl GameBoy {
     pub fn tick(&mut self) {
-
         self.update_ime(false);
 
         self.check_and_trigger_ly_coincidence();
@@ -210,7 +209,7 @@ impl GameBoy {
             self.cycles_to_idle = Some(0);
         }
 
-        if self.state == State::Execute || self.state == State::DmaTransfer {    
+        if self.state == State::Execute || self.state == State::DmaTransfer {
             self.execute();
         }
 
@@ -244,9 +243,8 @@ impl GameBoy {
         } else {
             self.r.stat &= (!1) << 2;
         }
-        if (self.r.stat >> 6) & (self.r.stat >> 2) & 1 != 0 && (stat_old >> 2) & 1 == 0{
+        if (self.r.stat >> 6) & (self.r.stat >> 2) & 1 != 0 && (stat_old >> 2) & 1 == 0 {
             self.request_interrupt(InterruptType::LCD);
-
         }
     }
 
@@ -280,25 +278,23 @@ impl GameBoy {
             if overflow_check > 0xFF {
                 self.r.tima = 0;
                 self.timer.wait_reload = 1;
-            }
-            else {
+            } else {
                 self.r.tima = overflow_check as u8;
-            } 
+            }
         }
 
         self.timer.prev_and_result = and_result;
-
     }
 
     fn execute(&mut self) {
         if let Some(cycles_to_idle) = self.cycles_to_idle {
-                if cycles_to_idle == 0 {
-                    let opcode: u8 = self.read(self.r.pc);
-                    self.r.pc += 1;
-                    self.cycles_to_idle = self.fetch_decode_execute(opcode);
-                } else {
-                    self.cycles_to_idle = Some(self.cycles_to_idle.unwrap() - 1);
-                }
+            if cycles_to_idle == 0 {
+                let opcode: u8 = self.read(self.r.pc);
+                self.r.pc += 1;
+                self.cycles_to_idle = self.fetch_decode_execute(opcode);
+            } else {
+                self.cycles_to_idle = Some(self.cycles_to_idle.unwrap() - 1);
+            }
         }
     }
 
@@ -308,7 +304,7 @@ impl GameBoy {
             IsrState::Wait1 => {
                 self.logger.log_info("ISR Wait1");
                 self.isr_state = IsrState::Wait2
-            },
+            }
             IsrState::Wait2 => {
                 self.logger.log_info("ISR Wait2");
                 self.isr_state = IsrState::PCPush1
@@ -333,13 +329,13 @@ impl GameBoy {
                         interrupt_index = Some(i);
                     }
                 }
-                
+
                 if let Some(i) = interrupt_index {
                     self.ime = false;
                     self.r.pc = [0x40, 0x48, 0x50, 0x58, 0x60][i];
-                    
+
                     self.cancel_interrupt_by_index(i as u8);
-                } 
+                }
 
                 self.isr_state = IsrState::Wait1;
                 self.state = State::Execute;
@@ -353,11 +349,11 @@ impl GameBoy {
     }
 
     pub fn cancel_interrupt(&mut self, interrupt_type: InterruptType) {
-        self.r.r#if &= !(1 << interrupt_type as u8); 
+        self.r.r#if &= !(1 << interrupt_type as u8);
     }
 
     pub fn cancel_interrupt_by_index(&mut self, interrupt_index: u8) {
-        self.r.r#if &= !(1 << interrupt_index); 
+        self.r.r#if &= !(1 << interrupt_index);
     }
 
     pub fn press_key(&mut self, mut key_id: u8) {

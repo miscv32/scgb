@@ -1,4 +1,7 @@
-use crate::{gb::{GameBoy, State}, util::*};
+use crate::{
+    gb::{GameBoy, State},
+    util::*,
+};
 
 impl GameBoy {
     pub fn fetch_decode_execute(&mut self, opcode: u8) -> Option<u8> {
@@ -301,7 +304,9 @@ impl GameBoy {
                 self.logger.log_disassembly("LDH (u8), A");
                 let n = self.read(self.r.pc);
                 self.r.pc += 1;
-                if n == 0x50 {println!("BOOTROM EXIT")};
+                if n == 0x50 {
+                    println!("BOOTROM EXIT")
+                };
                 self.write(unsigned_16(0xFF, n), self.r.a);
                 Some(3)
             }
@@ -600,11 +605,7 @@ impl GameBoy {
                     self.set_flag_z(result == 0);
                     self.set_flag_n(false);
                     self.set_flag_h((r8_old & 0xF) + 1 > 0xF);
-                    if r8 == 6 {
-                        return Some(3);
-                    } else {
-                        return Some(1);
-                    }
+                    return if r8 == 6 { Some(3) } else { Some(1) };
                 } else if (opcode & 0b11_000_111) == 0b00_000_101 {
                     // DEC r8
                     self.logger.log_disassembly("DEC r8");
@@ -615,11 +616,7 @@ impl GameBoy {
                     self.set_flag_z(result == 0);
                     self.set_flag_n(true);
                     self.set_flag_h((r8_old & 0xF) - 1 > 0xF);
-                    if r8 == 6 {
-                        return Some(3);
-                    } else {
-                        return Some(1);
-                    }
+                    return if r8 == 6 { Some(3) } else { Some(1) };
                 }
 
                 if (opcode >> 5) == 0b001 {
@@ -635,12 +632,12 @@ impl GameBoy {
                     }
                     let e = self.read(self.r.pc) as i8;
                     self.r.pc += 1;
-                    if condition {
+                    return if condition {
                         self.r.pc = (self.r.pc as i16 + e as i16) as u16;
-                        return Some(3);
+                        Some(3)
                     } else {
-                        return Some(2);
-                    }
+                        Some(2)
+                    };
                 }
 
                 if (opcode >> 6) == 0b01 {
@@ -663,11 +660,7 @@ impl GameBoy {
                         self.set_flag_n(false);
                         self.set_flag_h(((left & 0xF) + (right & 0xF)) > 0xF);
                         self.set_flag_c(((left as u16) + (right as u16)) > 0xFF);
-                        if r8 == 6 {
-                            return Some(2);
-                        } else {
-                            return Some(1);
-                        }
+                        return if r8 == 6 { Some(2) } else { Some(1) };
                     } else if (opcode >> 3) & 0b111 == 1 {
                         // ADC
                         self.logger.log_disassembly("ADC r8");
@@ -680,11 +673,7 @@ impl GameBoy {
                         self.set_flag_n(false);
                         self.set_flag_h(((left & 0xF) + (right & 0xF) + c_save) > 0xF);
                         self.set_flag_c(((left as u16) + (right as u16) + (c_save as u16)) > 0xFF);
-                        if r8 == 6 {
-                            return Some(2);
-                        } else {
-                            return Some(1);
-                        }
+                        return if r8 == 6 { Some(2) } else { Some(1) };
                     } else if (opcode >> 3) & 0b111 == 2 {
                         // SUB A, r8
                         self.logger.log_disassembly("SUB r8");
@@ -696,11 +685,7 @@ impl GameBoy {
                         self.set_flag_n(true);
                         self.set_flag_h(((left & 0xF) - (right & 0xF)) > 0xF);
                         self.set_flag_c(((left as u16) - (right as u16)) > 0xFF);
-                        if r8 == 6 {
-                            return Some(2);
-                        } else {
-                            return Some(1);
-                        }
+                        return if r8 == 6 { Some(2) } else { Some(1) };
                     } else if (opcode >> 3) & 0b111 == 3 {
                         // SBC
                         self.logger.log_disassembly("SBC r8");
@@ -722,11 +707,11 @@ impl GameBoy {
                         self.set_flag_n(false);
                         self.set_flag_h(true);
                         self.set_flag_c(false);
-                        if opcode & 0b111 == 6 {
-                            return Some(2);
+                        return if opcode & 0b111 == 6 {
+                            Some(2)
                         } else {
-                            return Some(1);
-                        }
+                            Some(1)
+                        };
                     } else if (opcode >> 3) & 0b111 == 5 {
                         self.logger.log_disassembly("XOR r8");
                         self.r.a ^= self.get_r8(opcode & 0b111);
@@ -734,11 +719,11 @@ impl GameBoy {
                         self.set_flag_n(false);
                         self.set_flag_h(false);
                         self.set_flag_c(false);
-                        if opcode & 0b111 == 6 {
-                            return Some(2);
+                        return if opcode & 0b111 == 6 {
+                            Some(2)
                         } else {
-                            return Some(1);
-                        }
+                            Some(1)
+                        };
                     } else if (opcode >> 3) & 0b111 == 6 {
                         // OR r
                         self.logger.log_disassembly("OR r8");
@@ -747,11 +732,11 @@ impl GameBoy {
                         self.set_flag_n(false);
                         self.set_flag_h(false);
                         self.set_flag_c(false);
-                        if opcode & 0b111 == 6 {
-                            return Some(2);
+                        return if opcode & 0b111 == 6 {
+                            Some(2)
                         } else {
-                            return Some(1);
-                        }
+                            Some(1)
+                        };
                     } else if (opcode >> 3) & 0b111 == 7 {
                         self.logger.log_disassembly("CP r8");
                         let r8: u8 = opcode & 0b111;
@@ -762,11 +747,7 @@ impl GameBoy {
                         self.set_flag_n(true);
                         self.set_flag_h(((left & 0xF) - (right & 0xF)) > 0xF);
                         self.set_flag_c(((left as u16) - (right as u16)) > 0xFF);
-                        if r8 == 6 {
-                            return Some(2);
-                        } else {
-                            return Some(1);
-                        }
+                        return if r8 == 6 { Some(2) } else { Some(1) };
                     }
                 }
 
@@ -821,16 +802,16 @@ impl GameBoy {
                         3 => condition = self.get_flag_c() != 0,
                         _ => panic!("not possible condition - RET conditional"),
                     }
-                    if condition {
+                    return if condition {
                         let lsb = self.read(self.r.sp);
                         self.r.sp += 1;
                         let msb = self.read(self.r.sp);
                         self.r.sp += 1;
                         self.r.pc = unsigned_16(msb, lsb);
-                        return Some(5);
+                        Some(5)
                     } else {
-                        return Some(2);
-                    }
+                        Some(2)
+                    };
                 } else if (opcode & 0b111_00_111) == 0b110_00_100 {
                     self.logger.log_disassembly("CALL conditional");
                     let ls_byte = self.read(self.r.pc);
@@ -847,16 +828,16 @@ impl GameBoy {
                             panic!("not possible condition - CALL conditional")
                         }
                     }
-                    if condition {
+                    return if condition {
                         self.r.sp -= 1;
                         self.write(self.r.sp, msb(self.r.pc));
                         self.r.sp -= 1;
                         self.write(self.r.sp, lsb(self.r.pc));
                         self.r.pc = unsigned_16(ms_byte, ls_byte);
-                        return Some(6);
+                        Some(6)
                     } else {
-                        return Some(3);
-                    }
+                        Some(3)
+                    };
                 }
 
                 if (opcode & 0b111_00_111) == 0b110_00_010 {
@@ -874,13 +855,13 @@ impl GameBoy {
                     self.r.pc += 1;
                     let msb = self.read(self.r.pc);
                     self.r.pc += 1;
-                    if condition {
+                    return if condition {
                         // JP conditional, u16
                         self.r.pc = unsigned_16(msb, lsb);
-                        return Some(4);
+                        Some(4)
                     } else {
-                        return Some(3);
-                    }
+                        Some(3)
+                    };
                 } else if (opcode & 0b11_000_111) == 0b11_000_111 {
                     // RST
                     self.logger.log_disassembly("RST");
@@ -908,7 +889,7 @@ impl GameBoy {
                     "Hit unimplemented or illegal instruction! {:#x}",
                     opcode
                 ));
-                return None;
+                None
             }
         }
     }
