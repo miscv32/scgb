@@ -1,5 +1,5 @@
 use std::cmp::max;
-
+use std::mem::swap;
 use crate::gb::{GameBoy, InterruptType, Sprite, State};
 
 enum LCDStatus {
@@ -84,46 +84,6 @@ impl GameBoy {
         }
     }
 
-    // fn render_background(&mut self) {
-    //     let tilemap: u16 = match self.r.lcdc & 8 {
-    //         0 => 0x9800,
-    //         _ => 0x9c00,
-    //     };
-    //     for x in 0..160 {
-    //         let tile_x = (x + self.r.scx) % 8;
-    //         let tile_y = (self.r.ly as u16 + self.r.scy as u16) % 8;
-
-    //         let x_off: u16 = ((x as u16 + self.r.scx as u16) / 8) & 0x1f;
-    //         let y_off: u16 = 32 * (((self.r.ly as u16 + self.r.scy as u16) & 0xFF) / 8);
-    //         let tile_num_addr = tilemap + ((x_off + y_off) & 0x3ff);
-    //         let tile_num = self.read(tile_num_addr);
-
-    //         let mut tile_addr: u16;
-    //         match self.r.lcdc & 0x10 {
-    //             0 => {
-    //                 tile_addr = (0x9000 + (tile_num as i32 * 16)) as u16;
-    //             }
-    //             _ => {
-    //                 tile_addr = 0x8000 + (tile_num as u16) * 16;
-    //             }
-    //         };
-
-    //         tile_addr += 2 * tile_y;
-
-    //         let data_low = (self.read(tile_addr) >> (7 - tile_x)) & 1;
-    //         let data_high = (self.read(tile_addr + 1) >> (7 - tile_x)) & 1;
-            
-    //         let ly = self.r.ly;
-            
-    //         let index = ly as usize * 160 + x as usize;
-    //         if index < 160 * 140 {
-    //             self.backbuf()[index] =
-    //                 self.map_background_palette(data_low | (data_high << 1));
-    //             self.background[ly as usize * 160 + x as usize] = self.backbuf()[ly as usize * 160 + x as usize];
-    //         }
-    //     }
-    // }
-
     fn scan_oam(&mut self) -> Vec<Sprite>{
         self.oam_base = 0xFE00;
         self.num_sprites = 0;
@@ -139,7 +99,7 @@ impl GameBoy {
                 priority: (self.oam(3) >> 7) & 1,
                 tile_num: self.oam(2),
             };
-            if (sprite.x > 0) && (self.r.ly as i16>= sprite.y) && ((self.r.ly as i16)< sprite.y + sprite.size_y as i16) && (sprite_buffer.len() < 10) {
+            if (sprite.x > 0) && (self.r.ly as i16 >= sprite.y) && ((self.r.ly as i16) < sprite.y + sprite.size_y as i16) && (sprite_buffer.len() < 10) {
                 sprite_buffer.push(sprite);
             } 
             self.oam_base += 4;
@@ -148,30 +108,62 @@ impl GameBoy {
     }
 
     fn render_sprite(&mut self, sprite: Sprite) {
-        let mut tile_y = ((self.r.ly as i16 + sprite.y) % 8) as u16;
-        if sprite.y_flip != 0 {tile_y = 7 - tile_y}
+        let mut tile_num_top = sprite.tile_num;
+        let mut tile_num_bottom = sprite.tile_num;
 
-        let tile_num = sprite.tile_num;
+        if sprite.size_y == 16 {
+            tile_num_top = sprite.tile_num & !1; // The top tile num, For the bottom tile we add 1
+            tile_num_bottom = sprite.tile_num | 1;
+        }
 
-        let mut tile_addr: u16 = 0x8000 + (tile_num as u16) * 16;
+        if sprite.y_flip != 0 {
+            swap(&mut tile_num_top, &mut tile_num_bottom);
+        }
 
-        tile_addr += 2 * tile_y;
+        let mut tile_addr_top = 0x8000 + tile_num_top as u16 * 16;
 
-        for x in sprite.x..sprite.x+8 {    
-            let mut tile_x = x as u16 - sprite.x as u16;
-            if sprite.x_flip != 0 {tile_x = 7 - tile_x}
-            let shift = 7 - tile_x;
+        let mut sprite_y =  self.r.ly as i16 - sprite.y; // should be non-negative and less than sprite.size_y
 
-            let data_low = (self.read(tile_addr) >> shift) & 1;
-            let data_high = (self.read(tile_addr + 1) >> shift) & 1;
-            let index = (self.r.ly) as usize * 160 + x as usize;
-            let should_draw = true; // TODO add some semi-accurate condition here
-            if should_draw {
-                self.backbuf()[index] =
-                    self.map_sprite_palette(sprite.pal, data_low | (data_high << 1));
+        if sprite.y_flip != 0 {
+            sprite_y = 7 - sprite_y;
+        }
+
+        tile_addr_top += 2 * sprite_y as u16;
+
+        let tile_data_top_low_bits = self.read(tile_addr_top);
+        let tile_data_top_high_bits = self.read(tile_addr_top + 1);
+        
+        self.render_sprite_tile(sprite, tile_data_top_low_bits, tile_data_top_high_bits);
+    }
+
+    fn render_sprite_tile(&mut self, sprite: Sprite, tile_data_low_bits: u8, tile_data_high_bits: u8) {
+        for x in 0..8 {
+            let screen_x = sprite.x + x;
+
+            if screen_x < 0 {
+                continue;
+            }
+
+            let shift = if sprite.x_flip != 0 {
+                x
+            } else {
+                7 - x
+            };
+
+            let pixel_data_low = (tile_data_low_bits >> (shift)) & 1;
+            let pixel_data_high = (tile_data_high_bits >> (shift)) & 1;
+
+            let index = (self.r.ly as usize) * 160 + screen_x as usize; // screen_x should be non-negative
+            let colour = pixel_data_low | (pixel_data_high << 1);
+
+            if index < 160 * 144 && colour != 0 {
+                if sprite.priority == 0 {
+                    self.backbuf()[index] = self.map_sprite_palette(sprite.pal, colour);
+                } else if self.backbuf()[index] == 0 {
+                    self.backbuf()[index] = self.map_sprite_palette(sprite.pal, colour);
+                }
             }
         }
-    
     }
 
     fn render_background(&mut self) {
@@ -282,15 +274,6 @@ impl GameBoy {
             self.window_line_counter += 1;
         }
     }
-    
-    // fn scan_oam(&mut self) -> Vec<Sprite> {
-    //     vec![]
-    // }
-
-    // fn render_sprite(&mut self, sprite: Sprite) {
-
-    // }
-
 
     fn render_scanline(&mut self) { 
             if ((self.r.lcdc >> 7) & 1) == 0 {
@@ -309,7 +292,7 @@ impl GameBoy {
             if ((self.r.lcdc >> 1) & 1) != 0 {
                 let sprites = self.scan_oam();
                 for sprite in sprites {
-                    //self.render_sprite(sprite)
+                    self.render_sprite(sprite)
                 }
             }
     }
