@@ -70,7 +70,6 @@ impl GameBoy {
                     let lower_nibble = ((not_select_buttons & self.keys_dulr)
                         | (not_select_dpad & self.keys_ssba))
                         & 0x0F;
-
                     return (self.r.joypad & 0xF0) | lower_nibble;
                 }
             }

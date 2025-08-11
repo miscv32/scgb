@@ -1,7 +1,4 @@
-use crate::{
-    gb::{GameBoy, State},
-    util::*,
-};
+use crate::{gb::{GameBoy, State}, util::*};
 
 impl GameBoy {
     pub fn fetch_decode_execute(&mut self, opcode: u8) -> Option<u8> {
@@ -305,7 +302,7 @@ impl GameBoy {
                 let n = self.read(self.r.pc);
                 self.r.pc += 1;
                 if n == 0x50 {
-                    println!("BOOTROM EXIT")
+                    self.logger.log_info("BOOTROM EXIT");
                 };
                 self.write(unsigned_16(0xFF, n), self.r.a);
                 Some(3)
@@ -536,7 +533,7 @@ impl GameBoy {
             0xFB => {
                 self.logger.log_disassembly("EI");
                 self.ime_dispatch = Some(2);
-                println!("EI hit: dispatch: {:?}", self.ime_dispatch);
+                self.logger.log_info(&format!("EI hit: dispatch: {:?}", self.ime_dispatch));
                 Some(1)
             }
             _ => {
