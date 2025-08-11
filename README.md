@@ -2,7 +2,7 @@
 
 current progress: 
 
-tetris: playable in 1-player mode (note: regression now causes tetris to hang before copyright screen, see commit f69b4ce for working version)
+tetris: playable in 1-player mode
 <img width="991" height="915" alt="image" src="https://github.com/user-attachments/assets/e69042ab-992a-4360-97e5-2ba6bfe1a116" />
 
 dmg-acid2 - mostly correct 
