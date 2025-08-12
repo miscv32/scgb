@@ -15,18 +15,38 @@ pub enum MappingType {
 }
 pub struct MappedRAM {
     pub mapping_type: MappingType,
-    pub main: [u8; GB_RAM_SIZE],
-    pub rom: [u8; GB_ROM_SIZE],
+    pub main: [u8; GB_RAM_SIZE], // VRAM, work RAM, etc.
+    pub boot_rom: [u8; GB_ROM_SIZE],
+    pub cartridge: Vec<u8>,
 }
 impl GameBoy {
-    pub fn read(&self, address: u16) -> u8 {
+    pub fn read(&mut self, address: u16) -> u8 {
         if (address as usize) >= GB_RAM_SIZE {
             0
         } else {
             if self.memory.mapping_type == MappingType::Default {
-                if self.memory.main[0xFF50] == 0 && (address as usize) < GB_ROM_SIZE {
-                    return self.memory.rom[address as usize];
-                } else if address == 0xFF05 {
+                // BOOT ROM
+                if self.r.bank == 0 && (address as usize) < GB_ROM_SIZE {
+                    return self.memory.boot_rom[address as usize]
+                }
+                // ROM bank 00
+                else if address <= 0x3FFF {
+                    return self.mbc_rom_bank_0()[address as usize];
+                }
+                // Switchable ROM bank
+                else if address >= 0x4000 && address <= 0x7FFF {
+                    return self.mbc_switchable_rom()[address as usize - 0x4000];
+                }
+                // Switchable external RAM bank
+                else if address >= 0xA000 && address <= 0xBFFF {
+                    return if self.mbc.has_ram {
+                        self.mbc_switchable_ram()[address as usize - 0xA000]
+                    } else {
+                        0xFF
+                    }
+                }
+                // IO Registers
+                else if address == 0xFF05 {
                     return self.r.tima;
                 } else if address == 0xFF06 {
                     return self.r.tma;
@@ -71,6 +91,8 @@ impl GameBoy {
                         | (not_select_dpad & self.keys_ssba))
                         & 0x0F;
                     return (self.r.joypad & 0xF0) | lower_nibble;
+                } else if address == 0xFF50 {
+                    return self.r.bank
                 }
             }
             self.memory.main[address as usize]
@@ -82,13 +104,17 @@ impl GameBoy {
             ()
         } else {
             if self.memory.mapping_type == MappingType::Default {
-                if (self.memory.main[0xFF50] != 0)
+                if (self.r.bank != 0)
                     && ((address <= 0x7FFF)
+                        || (!self.mbc.has_ram && (address >= 0xA000 && address <= 0xBFFF))
                         || (address >= 0xE000 && address <= 0xFDFF)
                         || (address >= 0xFEA0 && address <= 0xFEFF))
                 {
                     return;
-                } else if address == 0xFF05 {
+                } else if  self.mbc.has_ram && (address >= 0xA000 && address <= 0xBFFF) {
+                    self.mbc_switchable_ram()[address as usize - 0xA000] = data;
+                }
+                else if address == 0xFF05 {
                     self.timer.wait_reload = 0;
                     self.r.tima = data
                 } else if address == 0xFF06 {
@@ -129,6 +155,8 @@ impl GameBoy {
                     for i in 0..160 {
                         self.memory.main[0xFE00 + i] = self.read((self.dma_base + i) as u16)
                     }
+                } else if address == 0xFF50 {
+                    self.r.bank = data;
                 }
             }
             self.memory.main[address as usize] = data

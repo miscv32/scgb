@@ -6,8 +6,8 @@ impl ScgbGui {
     pub fn draw(&mut self, ctx: &egui::Context) {
         // TODO put the keymap somewhere reasonable
         let keymap: [Key; 8] = [
-            Key::J,
             Key::K,
+            Key::J,
             Key::Num1,
             Key::Space,
             Key::D,

@@ -147,10 +147,12 @@ impl GameBoy {
                                 self.r.pc += 1;
                                 let ms_bit = self.get_r8(r8) & 0x80;
                                 self.set_flag_c(ms_bit != 0);
-                                self.set_r8(r8, (self.get_r8(r8) << 1) | (ms_bit >> 7));
+                                let r8_val_1 = self.get_r8(r8);
+                                self.set_r8(r8, ( r8_val_1 << 1) | (ms_bit >> 7));
                                 self.set_flag_n(false);
                                 self.set_flag_h(false);
-                                self.set_flag_z(self.get_r8(r8) == 0);
+                                let r8_val_2 = self.get_r8(r8);
+                                self.set_flag_z(r8_val_2 == 0);
                                 if r8 == 6 {
                                     Some(4)
                                 } else {
@@ -163,10 +165,12 @@ impl GameBoy {
                                 self.r.pc += 1;
                                 let ls_bit = self.get_r8(r8) & 0x01;
                                 self.set_flag_c(ls_bit != 0);
-                                self.set_r8(r8, (self.get_r8(r8) >> 1) | (ls_bit << 7));
+                                let r8_val_1 = self.get_r8(r8);
+                                self.set_r8(r8, (r8_val_1 >> 1) | (ls_bit << 7));
                                 self.set_flag_n(false);
                                 self.set_flag_h(false);
-                                self.set_flag_z(self.get_r8(r8) == 0);
+                                let r8_val_2 = self.get_r8(r8);
+                                self.set_flag_z(r8_val_2 == 0);
                                 if r8 == 6 {
                                     Some(4)
                                 } else {
@@ -178,11 +182,13 @@ impl GameBoy {
                                 self.logger.log_disassembly("RL");
                                 self.r.pc += 1;
                                 let ms_bit = self.get_r8(r8) & 0x80;
-                                self.set_r8(r8, (self.get_r8(r8) << 1) | self.get_flag_c());
+                                let r8_val_1 = self.get_r8(r8);
+                                self.set_r8(r8, (r8_val_1 << 1) | self.get_flag_c());
                                 self.set_flag_c(ms_bit != 0);
                                 self.set_flag_n(false);
                                 self.set_flag_h(false);
-                                self.set_flag_z(self.get_r8(r8) == 0);
+                                let r8_val_2  =self.get_r8(r8);
+                                self.set_flag_z(r8_val_2 == 0);
                                 if r8 == 6 {
                                     Some(4)
                                 } else {
@@ -194,11 +200,13 @@ impl GameBoy {
                                 self.logger.log_disassembly("RR");
                                 self.r.pc += 1;
                                 let ls_bit = self.get_r8(r8) & 0x01;
-                                self.set_r8(r8, (self.get_r8(r8) >> 1) | self.get_flag_c() << 7);
+                                let r8_val_1 = self.get_r8(r8);
+                                self.set_r8(r8, (r8_val_1 >> 1) | self.get_flag_c() << 7);
                                 self.set_flag_c(ls_bit != 0);
                                 self.set_flag_n(false);
                                 self.set_flag_h(false);
-                                self.set_flag_z(self.get_r8(r8) == 0);
+                                let r8_val_2 = self.get_r8(r8);
+                                self.set_flag_z(r8_val_2 == 0);
                                 Some(4)
                             }
                             4 => {
@@ -206,8 +214,10 @@ impl GameBoy {
                                 self.logger.log_disassembly("SLA");
                                 self.r.pc += 1;
                                 let ms_bit = self.get_r8(r8) & 0x80;
-                                self.set_r8(r8, (self.get_r8(r8) << 1) | 0);
-                                self.set_flag_z(self.get_r8(r8) == 0);
+                                let r8_val_1 = self.get_r8(r8);
+                                self.set_r8(r8, (r8_val_1 << 1) | 0);
+                                let r8_val_2 = self.get_r8(r8);
+                                self.set_flag_z(r8_val_2 == 0);
                                 self.set_flag_n(false);
                                 self.set_flag_h(false);
                                 self.set_flag_c(ms_bit != 0);
@@ -223,8 +233,10 @@ impl GameBoy {
                                 self.r.pc += 1;
                                 let ms_bit = self.get_r8(r8) & 0x80;
                                 let ls_bit = self.get_r8(r8) & 0x01;
-                                self.set_r8(r8, (self.get_r8(r8) >> 1) | ms_bit);
-                                self.set_flag_z(self.get_r8(r8) == 0);
+                                let r8_val_1 = self.get_r8(r8);
+                                self.set_r8(r8, (r8_val_1 >> 1) | ms_bit);
+                                let r8_val_2 = self.get_r8(r8);
+                                self.set_flag_z(r8_val_2 == 0);
                                 self.set_flag_n(false);
                                 self.set_flag_h(false);
                                 self.set_flag_c(ls_bit != 0);
@@ -256,11 +268,13 @@ impl GameBoy {
                                 self.r.pc += 1;
                                 let r8 = cb_opcode & 0b111;
                                 let ls_bit = self.get_r8(r8) & 0x01;
-                                self.set_r8(r8, self.get_r8(r8) >> 1);
+                                let r8_val_1 = self.get_r8(r8);
+                                self.set_r8(r8, r8_val_1 >> 1);
                                 self.set_flag_c(ls_bit != 0);
                                 self.set_flag_n(false);
                                 self.set_flag_h(false);
-                                self.set_flag_z(self.get_r8(r8) == 0);
+                                let r8_val_2 = self.get_r8(r8);
+                                self.set_flag_z(r8_val_2 == 0);
                                 if r8 == 6 {
                                     Some(4)
                                 } else {
@@ -273,7 +287,8 @@ impl GameBoy {
                     0b01 => {
                         self.logger.log_disassembly("BIT");
                         self.r.pc += 1;
-                        self.set_flag_z((self.get_r8(r8) & (1 << bit)) == 0);
+                        let r8_val = self.get_r8(r8);
+                        self.set_flag_z((r8_val & (1 << bit)) == 0);
                         self.set_flag_n(false);
                         self.set_flag_h(true);
                         if r8 == 6 {
@@ -285,13 +300,15 @@ impl GameBoy {
                     0b10 => {
                         self.logger.log_disassembly("RES");
                         self.r.pc += 1;
-                        self.set_r8(r8, self.get_r8(r8) & !(1 << bit));
+                        let r8_val = self.get_r8(r8);
+                        self.set_r8(r8, r8_val & !(1 << bit));
                         Some(4)
                     }
                     0b11 => {
                         self.logger.log_disassembly("SET");
                         self.r.pc += 1;
-                        self.set_r8(r8, self.get_r8(r8) | (1 << bit));
+                        let r8_val = self.get_r8(r8);
+                        self.set_r8(r8, r8_val | (1 << bit));
                         Some(4)
                     }
                     _ => None,
@@ -641,7 +658,8 @@ impl GameBoy {
                     self.logger.log_disassembly("LD r8, r8");
                     let r8_source: u8 = opcode & 0b111;
                     let r8_dest: u8 = (opcode >> 3) & 0b111;
-                    self.set_r8(r8_dest, self.get_r8(r8_source));
+                    let r8_source_val = self.get_r8(r8_source);
+                    self.set_r8(r8_dest, r8_source_val);
                     return Some(2);
                 }
 

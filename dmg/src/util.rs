@@ -118,7 +118,7 @@ impl GameBoy {
         }
     }
 
-    pub fn get_r8(&self, value: u8) -> u8 {
+    pub fn get_r8(&mut self, value: u8) -> u8 {
         match value & 0b111 {
             0 => self.r.b,
             1 => self.r.c,
@@ -193,7 +193,7 @@ impl GameBoy {
         (self.r.bg_pal >> (data << 1)) & 0b11
     }
 
-    pub fn map_sprite_palette(&self, palette: u8, colour: u8) -> u8 {
+    pub fn map_sprite_palette(&mut self, palette: u8, colour: u8) -> u8 {
         (self.read(0xFF48 + palette as u16) >> (colour << 1)) & 0b11
     }
 

@@ -3,7 +3,7 @@
 // for instance cycles_to_idle must always be 0 if we want to restart in the Execute state.
 
 use crate::memory::{self, MappedRAM, MappingType};
-use crate::{log, util};
+use crate::{log, mbc, util};
 pub struct Registers {
     pub a: u8,
     pub f: u8,
@@ -31,6 +31,7 @@ pub struct Registers {
     pub lyc: u8,
     pub stat: u8,
     pub joypad: u8,
+    pub bank: u8,
 }
 #[derive(Copy, Clone, Debug)]
 pub struct Sprite {
@@ -100,6 +101,7 @@ pub struct GameBoy {
     pub dma_transfer_bytes_copied: u8,
     pub(crate) dma_base: usize,
     pub(crate) window_line_counter: u8,
+    pub(crate) mbc: mbc::MBC,
 }
 
 pub fn init() -> GameBoy {
@@ -130,12 +132,14 @@ pub fn init() -> GameBoy {
         lyc: 0,
         stat: 0,
         joypad: 0,
+        bank: 0,
     };
 
     let memory: MappedRAM = MappedRAM {
         main: [0u8; memory::GB_RAM_SIZE],
-        rom: [0; memory::GB_ROM_SIZE],
+        boot_rom: [0; memory::GB_ROM_SIZE],
         mapping_type: MappingType::Default,
+        cartridge: vec![],
     };
 
     let logger = log::Logger {
@@ -179,6 +183,7 @@ pub fn init() -> GameBoy {
         dma_transfer_bytes_copied: 0,
         dma_base: 0,
         window_line_counter: 0,
+        mbc: Default::default(),
     }
 }
 
