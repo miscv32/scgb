@@ -22,7 +22,7 @@ impl ScgbGui {
         .expect("couldnt read file");
 
         let rom: Vec<u8> = fs::read(
-            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\Dr. Mario (World).gb",
+            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\cpu_instrs\\cpu_instrs.gb",
         )
         .expect("couldnt read file");
 
@@ -32,6 +32,8 @@ impl ScgbGui {
 
         gameboy.memory.cartridge = rom;
 
+        gameboy.mbc = gameboy.detect_mbc();
+        println!("{:?}", gameboy.mbc);
         Self { framebuf, gameboy }
     }
 }

@@ -101,7 +101,7 @@ pub struct GameBoy {
     pub dma_transfer_bytes_copied: u8,
     pub(crate) dma_base: usize,
     pub(crate) window_line_counter: u8,
-    pub(crate) mbc: mbc::MBC,
+    pub mbc: mbc::MBC,
 }
 
 pub fn init() -> GameBoy {

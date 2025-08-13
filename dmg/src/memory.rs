@@ -1,4 +1,6 @@
+use std::cmp::{max, min, PartialEq};
 use crate::gb::GameBoy;
+use crate::mbc;
 
 pub const GB_RAM_SIZE: usize = 0x10000;
 pub const GB_ROM_SIZE: usize = 0x100;
@@ -19,6 +21,7 @@ pub struct MappedRAM {
     pub boot_rom: [u8; GB_ROM_SIZE],
     pub cartridge: Vec<u8>,
 }
+
 impl GameBoy {
     pub fn read(&mut self, address: u16) -> u8 {
         if (address as usize) >= GB_RAM_SIZE {
@@ -104,7 +107,35 @@ impl GameBoy {
             ()
         } else {
             if self.memory.mapping_type == MappingType::Default {
-                if (self.r.bank != 0)
+                if self.mbc.cartridge_type == mbc::CartridgeType::MBC1 && self.r.bank != 0 {
+                    if address <= 0x1FFF {
+                        if data & 0x0F == 0x0A {
+                            self.mbc.ram_enabled = true;
+                        } else {
+                            self.mbc.ram_enabled = false;
+                        }
+                    }
+                    else if address >= 0x2000 && address <= 0x3FFF {
+                        self.mbc.rom_bank_number = max(data & 0x1F, 1);
+                        let num_banks = self.mbc.rom_size / 16 * 1024;
+                        if self.mbc.rom_bank_number as usize > num_banks {
+                            // mask to number of bits needed to select num_banks
+                            // assuming num_banks is a power of 2
+                            self.mbc.rom_bank_number &= (min(num_banks, 256) - 1) as u8;
+                        }
+                        if self.mbc.banking_mode_1_select {
+                            self.mbc.rom_bank_number |= (self.mbc.ram_bank_number << 5);
+                        }
+                    }
+                    else if address >= 0x4000 && address <= 0x5FFF {
+                        self.mbc.ram_bank_number = data & 0x03;
+                    }
+                    else if address >= 0x6000 && address <= 0x7FFF {
+                        self.mbc.banking_mode_1_select = data == 1;
+                    }
+                }
+
+                else if (self.r.bank != 0)
                     && ((address <= 0x7FFF)
                         || (!self.mbc.has_ram && (address >= 0xA000 && address <= 0xBFFF))
                         || (address >= 0xE000 && address <= 0xFDFF)
