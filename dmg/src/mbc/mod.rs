@@ -46,7 +46,10 @@ impl GameBoy {
                 has_battery = true;
                 has_ram = true;
             }
-            _ => unimplemented!(),
+            _ => {
+                self.logger.log_info(&format!("{:?}", self.memory.cartridge[0x147]));
+                unimplemented!()
+            }
         }
         match self.memory.cartridge[0x148] {
             0x00 | 0x01 | 0x02 | 0x03 | 0x04 | 0x05 | 0x06 | 0x07 | 0x08 => {

@@ -79,6 +79,8 @@ impl GameBoy {
                     return self.r.lyc;
                 } else if address == 0xFF41 {
                     return self.r.stat;
+                } else if address == 0xFF02 {
+                    return 0xFF;
                 } else if address == 0xFF00 {
                     let not_select_buttons = if (self.r.joypad >> 5) & 1 == 0 {
                         0
@@ -124,7 +126,7 @@ impl GameBoy {
                             self.mbc.rom_bank_number &= (min(num_banks, 256) - 1) as u8;
                         }
                         if self.mbc.banking_mode_1_select {
-                            self.mbc.rom_bank_number |= (self.mbc.ram_bank_number << 5);
+                            self.mbc.rom_bank_number |= self.mbc.ram_bank_number << 5;
                         }
                     }
                     else if address >= 0x4000 && address <= 0x5FFF {

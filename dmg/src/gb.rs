@@ -1,7 +1,3 @@
-// TODOs
-// add state transition functions to ensure that certain classes of bugs are avoided
-// for instance cycles_to_idle must always be 0 if we want to restart in the Execute state.
-
 use crate::memory::{self, MappedRAM, MappingType};
 use crate::{log, mbc, util};
 pub struct Registers {
@@ -143,7 +139,7 @@ pub fn init() -> GameBoy {
     };
 
     let logger = log::Logger {
-        level: log::LogLevel::None,
+        level: log::LogLevel::Info,
     };
 
     GameBoy {
@@ -190,7 +186,6 @@ pub fn init() -> GameBoy {
 impl GameBoy {
     pub fn tick(&mut self) {
         self.update_ime(false);
-
         self.check_and_trigger_ly_coincidence();
 
         let wake_up = (self.r.r#if & self.r.ie) != 0;
@@ -217,18 +212,6 @@ impl GameBoy {
         if self.state == State::Execute || self.state == State::DmaTransfer {
             self.execute();
         }
-
-        // if self.state == State::DmaTransfer { // TODO allow CPU execution but stop reads/writes to  external memory during DMA transfer. I dont think many games rely on this
-        //     if self.dma_transfer_bytes_copied < 160 {
-        //         self.memory.main[self.oam_base as usize + self.dma_transfer_bytes_copied as usize] = self.memory.main[self.dma_base as usize + self.dma_transfer_bytes_copied as usize];
-        //         self.dma_transfer_bytes_copied += 1;
-        //     } else if self.dma_transfer_bytes_copied == 160 {
-        //         self.state = State::Execute;
-        //         println!("Done DMA transfer")
-        //     } else {
-        //         panic!("Maybe copied more than 160 bytes in dma transfer. This is a bug!!")
-        //     }
-        // }
 
         self.update_ime(true);
 
