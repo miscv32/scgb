@@ -101,7 +101,7 @@ impl GameBoy {
         match self.mbc.cartridge_type {
             CartridgeType::NoMBC => &self.memory.cartridge[0x4000..=0x7FFF],
             CartridgeType::MBC1 => {
-                let off: usize = self.mbc.rom_bank_number as usize * 0x3FFF;
+                let off: usize = (self.mbc.rom_bank_number - 1) as usize * 0x3FFF;
                 &self.memory.cartridge[(0x4000+off)..=(0x7FFF+off)]
             },
         }

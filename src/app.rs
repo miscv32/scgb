@@ -22,7 +22,7 @@ impl ScgbGui {
         .expect("couldnt read file");
 
         let rom: Vec<u8> = fs::read(
-            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\tetris.gb",
+            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\cpu_instrs\\individual\\02-interrupts.gb",
         )
         .expect("couldnt read file");
 

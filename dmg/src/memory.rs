@@ -10,7 +10,7 @@ pub fn init() -> FlatRAM {
 
 pub type FlatRAM = [u8; GB_RAM_SIZE];
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum MappingType {
     Flat,    // all addresses readable and writable (for SST)
     Default, // normal DMG behaviour with no MBCs (wip)
@@ -137,14 +137,14 @@ impl GameBoy {
                     }
                 }
 
-                else if (self.r.bank != 0)
-                    && ((address <= 0x7FFF)
+                else if (address <= 0x7FFF)
                         || (!self.mbc.has_ram && (address >= 0xA000 && address <= 0xBFFF))
                         || (address >= 0xE000 && address <= 0xFDFF)
-                        || (address >= 0xFEA0 && address <= 0xFEFF))
+                        || (address >= 0xFEA0 && address <= 0xFEFF)
                 {
                     return;
-                } else if  self.mbc.has_ram && (address >= 0xA000 && address <= 0xBFFF) {
+                }
+                if self.mbc.has_ram && (address >= 0xA000 && address <= 0xBFFF) {
                     self.mbc_switchable_ram()[address as usize - 0xA000] = data;
                 }
                 else if address == 0xFF05 {
@@ -174,6 +174,7 @@ impl GameBoy {
                 } else if address == 0xFFFF {
                     self.r.ie = data;
                 } else if address == 0xFF0F {
+                    println!("Write to IF (manual interrupt trigger) :P {:#x}", data);
                     self.r.r#if = data;
                 } else if address == 0xFF45 {
                     self.r.lyc = data;

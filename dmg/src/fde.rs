@@ -547,12 +547,16 @@ impl GameBoy {
                 self.ime = false;
                 Some(1)
             }
+
             0xFB => {
                 self.logger.log_disassembly("EI");
                 self.ime_dispatch = Some(2);
+                println!("{:#8b}", self.r.ie);
+                println!("{:#8b}", self.r.r#if);
                 self.logger.log_info(&format!("EI hit: dispatch: {:?}", self.ime_dispatch));
                 Some(1)
             }
+
             _ => {
                 let r16 = (opcode >> 4) & 0b11;
                 if (opcode & 0b11_00_1111) == 0b00_00_0001 {
