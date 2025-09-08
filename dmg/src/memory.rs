@@ -52,6 +52,8 @@ impl GameBoy {
             0xFF44 => self.r.ly,
             0xFF45 => self.r.lyc,
             0xFF47 => self.r.bg_pal,
+            0xFF48 => self.r.obp0,
+            0xFF49 => self.r.obp1,
             0xFF4A => self.r.wy,
             0xFF4B => self.r.wx,
             0xFF50 => self.r.bank,
@@ -129,6 +131,8 @@ impl GameBoy {
             0xFF42 => self.r.scy = data,
             0xFF43 => self.r.scx = data,
             0xFF47 => self.r.bg_pal = data,
+            0xFF48 => self.r.obp0 = data,
+            0xFF49 => self.r.obp1 = data,
             0xFFFF => self.r.ie = data,
             0xFF0F => self.r.r#if = data,
             0xFF45 => {

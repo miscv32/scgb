@@ -28,6 +28,8 @@ pub struct Registers {
     pub stat: u8,
     pub joypad: u8,
     pub bank: u8,
+    pub obp1: u8,
+    pub obp0: u8,
 }
 #[derive(Copy, Clone, Debug)]
 pub struct Sprite {
@@ -129,6 +131,8 @@ pub fn init() -> GameBoy {
         stat: 0,
         joypad: 0,
         bank: 0,
+        obp1: 0,
+        obp0: 0,
     };
 
     let memory: MappedRAM = MappedRAM {
