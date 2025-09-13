@@ -144,7 +144,7 @@ pub fn init() -> GameBoy {
     };
 
     let logger = log::Logger {
-        level: log::LogLevel::None,
+        level: log::LogLevel::Info,
     };
 
     GameBoy {

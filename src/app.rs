@@ -22,7 +22,7 @@ impl ScgbGui {
         .expect("couldnt read file");
 
         let rom: Vec<u8> = fs::read(
-            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\mooneye\\mbc1\\bits_bank2.gb",
+            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\pokemon red sgb enhanced.gb",
         )
         .expect("couldnt read file");
 

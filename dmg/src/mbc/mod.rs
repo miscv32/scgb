@@ -5,6 +5,7 @@ pub(crate) enum CartridgeType {
     #[default]
     NoMBC,
     MBC1,
+    MBC3, // NO RTC
 }
 #[derive(Default, Debug)]
 pub struct MBC {
@@ -48,8 +49,24 @@ impl GameBoy {
                 has_battery = true;
                 has_ram = true;
             }
+            0x11 => {
+                cartridge_type = CartridgeType::MBC3;
+                has_battery = false;
+                has_ram = false;
+            }
+            0x12 => {
+                cartridge_type = CartridgeType::MBC3;
+                has_battery = false;
+                has_ram = true;
+            }
+            0x13 => {
+                // MBC3 + RAM + Battery
+                cartridge_type = CartridgeType::MBC3;
+                has_battery = true;
+                has_ram = true;
+            }
             _ => {
-                self.logger.log_info(&format!("{:?}", self.memory.cartridge[0x147]));
+                self.logger.log_info(&format!("{:#x}", self.memory.cartridge[0x147]));
                 unimplemented!()
             }
         }
@@ -98,14 +115,14 @@ impl GameBoy {
 
     pub fn mbc_rom_bank_0(&self) -> &[u8] {
         match self.mbc.cartridge_type {
-            CartridgeType::NoMBC | CartridgeType::MBC1 => &self.memory.cartridge[0x0..=0x3FFF],
+            CartridgeType::NoMBC | CartridgeType::MBC1 | CartridgeType::MBC3 => &self.memory.cartridge[0x0..=0x3FFF],
             _ => unimplemented!(),
         }
     }
     pub fn mbc_switchable_rom(&self) -> &[u8] {
         match self.mbc.cartridge_type {
             CartridgeType::NoMBC => &self.memory.cartridge[0x4000..=0x7FFF],
-            CartridgeType::MBC1 => {
+            CartridgeType::MBC1 | CartridgeType::MBC3 => {
                 let off = self.mbc.rom_bank_number as usize * 16*1024;
                 &self.memory.cartridge[off .. off + 16*1024]
             },

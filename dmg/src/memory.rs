@@ -64,7 +64,6 @@ impl GameBoy {
                 MappingType::Flat => self.memory.main[address as usize],
                 MappingType::Default => {
                     if self.r.bank == 0 && (address as usize) < GB_ROM_SIZE {
-                        // boot ROM if mapped
                         self.memory.boot_rom[address as usize]
                     } else if (0x0000..=0x3FFF).contains(&address) {
                         // ROM bank 0
@@ -77,7 +76,7 @@ impl GameBoy {
                         self.memory.main[address as usize]
                     } else if (0xA000..=0xBFFF).contains(&address) {
                         // External RAM
-                        if self.mbc.has_ram {
+                        if self.mbc.has_ram && self.mbc.ram_enabled {
                             self.mbc_switchable_ram()[address as usize - 0xA000]
                         } else {
                             0xFF
@@ -219,6 +218,18 @@ impl GameBoy {
                             self.mbc.rom_bank_number = bank;
                         }
 
+                        if (0xA000..=0xBFFF).contains(&address) && self.mbc.has_ram && self.mbc.ram_enabled {
+                            self.mbc_switchable_ram()[address as usize - 0xA000] = data;
+                        }
+                    }
+                    mbc::CartridgeType::MBC3 => {
+                        if address <= 0x1FFF {
+                            self.mbc.ram_enabled = (data & 0x0F) == 0x0A;
+                        } else if (0x2000..=0x3FFF).contains(&address) {
+                            self.mbc.rom_bank_number = max(data & 0x7F, 1);
+                        } else if (0x4000..=0x5FFF).contains(&address) {
+                            self.mbc.ram_bank_number = data & 0x03;
+                        }
                         if (0xA000..=0xBFFF).contains(&address) && self.mbc.has_ram && self.mbc.ram_enabled {
                             self.mbc_switchable_ram()[address as usize - 0xA000] = data;
                         }
