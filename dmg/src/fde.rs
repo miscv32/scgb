@@ -551,8 +551,6 @@ impl GameBoy {
             0xFB => {
                 self.logger.log_disassembly("EI");
                 self.ime_dispatch = Some(2);
-                println!("{:#8b}", self.r.ie);
-                println!("{:#8b}", self.r.r#if);
                 self.logger.log_info(&format!("EI hit: dispatch: {:?}", self.ime_dispatch));
                 Some(1)
             }

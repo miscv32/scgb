@@ -140,10 +140,11 @@ pub fn init() -> GameBoy {
         boot_rom: [0; memory::GB_ROM_SIZE],
         mapping_type: MappingType::Default,
         cartridge: vec![],
+        switchable_ram: vec![],
     };
 
     let logger = log::Logger {
-        level: log::LogLevel::Info,
+        level: log::LogLevel::None,
     };
 
     GameBoy {
@@ -243,10 +244,10 @@ impl GameBoy {
     fn update_timers(&mut self) {
         self.r.div_16 += 1;
 
-        if self.timer.wait_reload > 0 && self.timer.wait_reload < 4 {
+        if self.timer.wait_reload > 0 && self.timer.wait_reload < 5 {
             self.timer.wait_reload += 1;
             return;
-        } else if self.timer.wait_reload == 4 {
+        } else if self.timer.wait_reload == 5 {
             self.r.tima = self.r.tma;
             self.timer.wait_reload = 0;
             self.request_interrupt(InterruptType::Timer);

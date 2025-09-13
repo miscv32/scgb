@@ -22,7 +22,7 @@ impl ScgbGui {
         .expect("couldnt read file");
 
         let rom: Vec<u8> = fs::read(
-            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\tetris.gb",
+            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\mooneye\\mbc1\\bits_bank2.gb",
         )
         .expect("couldnt read file");
 
@@ -33,8 +33,8 @@ impl ScgbGui {
         gameboy.memory.cartridge = rom;
 
         gameboy.mbc = gameboy.detect_mbc();
-
-        gameboy.logger.log_info(&format!("{:?}", gameboy.decode_cart_header()));
+        let cart_decode = gameboy.decode_cart_header();
+        gameboy.logger.log_info(&format!("{:?}", cart_decode));
 
         Self { framebuf, gameboy }
     }

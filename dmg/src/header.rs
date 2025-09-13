@@ -410,7 +410,7 @@ pub struct CartridgeHeader {
 
 }
 impl GameBoy {
-    pub fn decode_cart_header(&self) -> CartridgeHeader {
+    pub fn decode_cart_header(&mut self) -> CartridgeHeader {
         let mbc = self.detect_mbc();
         let title = String::from_utf8(self.memory.cartridge[0x0134..0x0143].to_vec()).unwrap();
         let manufacturer_code = String::from_utf8(self.memory.cartridge[0x013F..=0x0142].to_vec()).unwrap();

@@ -10,16 +10,18 @@ pub(crate) enum CartridgeType {
 pub struct MBC {
     pub(crate) cartridge_type: CartridgeType,
     pub(crate) rom_size: usize,
-    ram_size: usize,
+    pub(crate) ram_size: usize,
     has_battery: bool,
     pub(crate) has_ram: bool,
     pub(crate) ram_enabled: bool,
     pub(crate) rom_bank_number: u8,
     pub(crate) ram_bank_number: u8,
     pub(crate) banking_mode_1_select: bool,
+    pub rom_bank_high: u8,
+    pub rom_bank_low: u8,
 }
 impl GameBoy {
-    pub fn detect_mbc(&self) -> MBC {
+    pub fn detect_mbc(&mut self) -> MBC {
         let cartridge_type;
         let rom_size: usize;
         let ram_size: usize;
@@ -77,6 +79,7 @@ impl GameBoy {
             }
             _ => panic!("Invalid RAM size (cartridge byte 0x149)")
         }
+        self.memory.switchable_ram = vec![0; self.mbc.ram_size];
 
         MBC {
             cartridge_type,
@@ -88,6 +91,8 @@ impl GameBoy {
             rom_bank_number: 1,
             ram_bank_number: 0,
             banking_mode_1_select: false,
+            rom_bank_high: 0,
+            rom_bank_low: 0,
         }
     }
 
@@ -101,8 +106,8 @@ impl GameBoy {
         match self.mbc.cartridge_type {
             CartridgeType::NoMBC => &self.memory.cartridge[0x4000..=0x7FFF],
             CartridgeType::MBC1 => {
-                let off: usize = (self.mbc.rom_bank_number - 1) as usize * 0x3FFF;
-                &self.memory.cartridge[(0x4000+off)..=(0x7FFF+off)]
+                let off = self.mbc.rom_bank_number as usize * 16*1024;
+                &self.memory.cartridge[off .. off + 16*1024]
             },
         }
     }
@@ -110,7 +115,7 @@ impl GameBoy {
     pub fn mbc_switchable_ram(&mut self) -> &mut [u8] {
         match self.mbc.has_ram {
             false => panic!("mbc_switchable_ram can only be called if MBC has RAM associated with it."),
-            true  => unimplemented!(),
+            true  => &mut self.memory.switchable_ram[self.mbc.ram_bank_number as usize*8*1024..(self.mbc.ram_bank_number as usize+1)*8*1024],
         }
     }
 }
