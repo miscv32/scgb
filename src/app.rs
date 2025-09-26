@@ -1,7 +1,7 @@
 use crate::widgets::framebuf::FrameBufWidget;
 use dmg::gb;
 use dmg::gb::GameBoy;
-use std::fs;
+use std::{env, fs};
 pub struct ScgbGui {
     pub framebuf: FrameBufWidget,
     pub gameboy: GameBoy,
@@ -17,12 +17,17 @@ impl ScgbGui {
         let mut gameboy = gb::init();
 
         let data: Vec<u8> = fs::read(
-            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\dmg_boot.bin",
+            "dmg_boot.bin",
         )
         .expect("couldnt read file");
 
+        let args: Vec<String> = env::args().collect();
+        if args.len() != 2 {
+            panic!("Provide the ROM file to run")
+        }
+
         let rom: Vec<u8> = fs::read(
-            "C:\\Users\\jodkm\\Documents\\Development\\rust\\scgb\\test_roms\\pokemon red sgb enhanced.gb",
+            args[1].clone(),
         )
         .expect("couldnt read file");
 

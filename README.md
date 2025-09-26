@@ -1,11 +1,19 @@
 # scgb
 
-current progress: 
-Super Mario Land: Playable, but significant and noticeable bugs
-![img.png](img.png)
-tetris: playable in 1-player mode
-<img width="991" height="915" alt="image" src="https://github.com/user-attachments/assets/e69042ab-992a-4360-97e5-2ba6bfe1a116" />
-Dr. Mario: playable
+current progress:
+
+The following games have been tested. There is no audio, serial or save file support yet.
+One star (\*) means there are minor graphical bugs. Two stars (\*\*) mean the graphical bugs are significant (affect playability). 3 stars  (\*\*\*) means the game crashes or freezes during emulation.
+- Tetris
+- Dr. Mario
+- Kirby's Dream Land
+- The Legend of Zelda - Link's Awakening *
+- Super Mario Land *
+- Pokemon Red *
+- Tennis **
+- Mr. Nutz **
+- Super Mario Land 2 ***
+- Wario Land II ***
 
 dmg-acid2 - mostly correct 
 

@@ -153,31 +153,6 @@ impl GameBoy {
                 MappingType::Default => match self.mbc.cartridge_type {
                     mbc::CartridgeType::NoMBC => {}
                     mbc::CartridgeType::MBC1 => {
-                        // if address <= 0x1FFF {
-                        //     self.mbc.ram_enabled = (data & 0x0F) == 0x0A;
-                        // } else if (0x2000..=0x3FFF).contains(&address) {
-                        //     self.mbc.rom_bank_number = data & 0x1F;
-                        //     let num_banks = self.mbc.rom_size / (16 * 1024);
-                        //     if (data & 0x1F) == 0 {
-                        //         self.mbc.rom_bank_number = 1;
-                        //     }
-                        //     self.mbc.rom_bank_number |= self.mbc.rom_bank_high << 5;
-                        //     self.mbc.rom_bank_number &= (min(num_banks,256) as u8) - 1;
-                        // } else if (0x4000..=0x5FFF).contains(&address) {
-                        //     if self.mbc.rom_size >= 1024*1024 {
-                        //         self.mbc.rom_bank_high = data & 0x03;
-                        //     }
-                        //     if self.mbc.ram_size >= 32*1024 {
-                        //         self.mbc.ram_bank_number = data & 0x03;
-                        //     }
-                        //
-                        // } else if (0x6000..=0x7FFF).contains(&address) {
-                        //     self.mbc.banking_mode_1_select = (data & 1) == 1;
-                        // }
-                        //
-                        // if (0xA000..=0xBFFF).contains(&address) && self.mbc.has_ram && self.mbc.ram_enabled {
-                        //     self.mbc_switchable_ram()[address as usize - 0xA000] = data;
-                        // }
                         if address <= 0x1FFF {
                             self.mbc.ram_enabled = (data & 0x0F) == 0x0A;
 
@@ -230,6 +205,51 @@ impl GameBoy {
                         } else if (0x4000..=0x5FFF).contains(&address) {
                             self.mbc.ram_bank_number = data & 0x03;
                         }
+                        if (0xA000..=0xBFFF).contains(&address) && self.mbc.has_ram && self.mbc.ram_enabled {
+                            self.mbc_switchable_ram()[address as usize - 0xA000] = data;
+                        }
+                    }
+                    mbc::CartridgeType::MBC5 => {
+                        if address <= 0x1FFF {
+                            self.mbc.ram_enabled = (data & 0x0F) == 0x0A;
+
+                        } else if (0x2000..=0x3FFF).contains(&address) {
+                            self.mbc.rom_bank_low = data & 0x1F;
+
+                        } else if (0x4000..=0x5FFF).contains(&address) {
+                            if self.mbc.rom_size >= 1024*1024 {
+                                self.mbc.rom_bank_high = data & 0x03;
+                            }
+                            if self.mbc.ram_size >= 32*1024 {
+                                self.mbc.ram_bank_number = data & 0x03;
+                            }
+
+                        } else if (0x6000..=0x7FFF).contains(&address) {
+                            self.mbc.banking_mode_1_select = (data & 1) != 0;
+                        }
+
+                        // recompute effective bank after any change
+                        if (0x2000..=0x7FFF).contains(&address) {
+                            let num_banks = self.mbc.rom_size / (16 * 1024);
+                            let mask = (min(num_banks, 256) - 1) as u8;
+
+                            // base 5-bit
+                            let mut low = self.mbc.rom_bank_low;
+                            if low == 0 {
+                                low = 1;
+                            }
+
+                            let mut bank = if self.mbc.banking_mode_1_select {
+                                low
+                            } else {
+                                // mode 0: high bits extend
+                                ((self.mbc.rom_bank_high << 5) | (low as u8))
+                            };
+
+                            bank &= mask;
+                            self.mbc.rom_bank_number = bank;
+                        }
+
                         if (0xA000..=0xBFFF).contains(&address) && self.mbc.has_ram && self.mbc.ram_enabled {
                             self.mbc_switchable_ram()[address as usize - 0xA000] = data;
                         }
